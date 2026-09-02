@@ -541,5 +541,120 @@ def test_risk_checks(tmp_path: Path) -> None:
     )
 
 
+def test_orders(tmp_path: Path) -> None:
+    """Task P1-DB-9: orders table schema, status constraints, and unique-nullable broker_order_id."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "orders" in tables, f"Table 'orders' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("orders")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("orders")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "broker_order_id",
+            "class",
+            "legs",
+            "status",
+            "submitted_at",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from orders"
+
+        assert col_by_name["broker_order_id"]["nullable"] is True
+        assert col_by_name["legs"]["nullable"] is True
+        assert col_by_name["status"]["nullable"] is False
+
+        metadata = MetaData()
+        orders_table = Table("orders", metadata, autoload_with=engine)
+
+        # 1. Insert two rows with NULL broker_order_id (must coexist)
+        with engine.begin() as conn:
+            res1 = conn.execute(
+                insert(orders_table).values(
+                    cycle_id="cycle_ord_001",
+                    broker_order_id=None,
+                    status="PENDING",
+                    legs=[{"symbol": "SPY", "qty": 10}],
+                    submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                    **{"class": "simple"},
+                )
+            )
+            res2 = conn.execute(
+                insert(orders_table).values(
+                    cycle_id="cycle_ord_001",
+                    broker_order_id=None,
+                    status="PENDING",
+                    legs=[{"symbol": "AAPL", "qty": 5}],
+                    submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                    **{"class": "simple"},
+                )
+            )
+            assert res1.inserted_primary_key[0] is not None
+            assert res2.inserted_primary_key[0] is not None
+            assert res1.inserted_primary_key[0] != res2.inserted_primary_key[0]
+
+        # 2. Insert with broker_order_id
+        with engine.begin() as conn:
+            conn.execute(
+                insert(orders_table).values(
+                    cycle_id="cycle_ord_002",
+                    broker_order_id="broker_order_xyz_1",
+                    status="SUBMITTED",
+                    legs=None,
+                    submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                    **{"class": "bracket"},
+                )
+            )
+
+        # Duplicate broker_order_id must fail
+        with pytest.raises((IntegrityError, Exception)):
+            with engine.begin() as conn:
+                conn.execute(
+                    insert(orders_table).values(
+                        cycle_id="cycle_ord_003",
+                        broker_order_id="broker_order_xyz_1",
+                        status="SUBMITTED",
+                        legs=None,
+                        submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                        **{"class": "bracket"},
+                    )
+                )
+
+        # Invalid status must fail
+        with pytest.raises((IntegrityError, Exception)):
+            with engine.begin() as conn:
+                conn.execute(
+                    insert(orders_table).values(
+                        cycle_id="cycle_ord_004",
+                        broker_order_id="broker_order_xyz_2",
+                        status="INVALID_STATUS",
+                        legs=None,
+                        submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                        **{"class": "simple"},
+                    )
+                )
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0007_risk_checks", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0007_risk_checks` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
 
 

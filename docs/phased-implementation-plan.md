@@ -104,9 +104,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-8** — Migration: `risk_checks` (id, cycle_id, verdict, checks jsonb, violations jsonb, warnings jsonb, modifications jsonb).
   - Test: `tests/db/test_schema.py::test_risk_checks` — all four jsonb columns present.
   - [x] Confirm — `\d risk_checks` matches.
-- [ ] **P1-DB-9** — Migration: `orders` (id, cycle_id, broker_order_id, class, legs jsonb, status, submitted_at).
+- [x] **P1-DB-9** — Migration: `orders` (id, cycle_id, broker_order_id, class, legs jsonb, status, submitted_at).
   - Test: `tests/db/test_schema.py::test_orders` — `status` constrained; `broker_order_id` unique-nullable.
-  - [ ] Confirm — `\d orders`; two rows with null `broker_order_id` coexist.
+  - [x] Confirm — `\d orders`; two rows with null `broker_order_id` coexist.
 - [ ] **P1-DB-10** — Migration: `fills` (id, order_id FK, leg_symbol, qty, price, filled_at, slippage).
   - Test: `tests/db/test_schema.py::test_fills` — `order_id` FK → `orders(id)` with cascade rule as designed.
   - [ ] Confirm — `\d fills` shows the FK.
