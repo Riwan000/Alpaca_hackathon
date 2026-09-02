@@ -1,7 +1,14 @@
-# Minimal deps for the typed settings module + its tests (task P1-DB-1).
-# P1-BE-2 replaces this with the full backend dependency manifest
-# (fastapi, uvicorn, httpx, alpaca-py, langgraph, asyncpg, pytest-cov, ...).
+# Minimal deps for the typed settings module and migration tooling
+# (tasks P1-DB-1, P1-DB-2). P1-BE-2 replaces this with the full backend
+# dependency manifest (fastapi, uvicorn, httpx, alpaca-py, langgraph,
+# asyncpg, pytest-cov, ...).
 pydantic>=2.11,<3
 pydantic-settings>=2.10,<3
 python-dotenv>=1.0
 pytest>=8.4
+
+# Migrations (P1-DB-2) — Alembic over psycopg v3 against Neon Postgres.
+# >=1.16 for the `path_separator` key used in backend/alembic.ini.
+alembic>=1.16,<2
+SQLAlchemy>=2.0,<3
+psycopg[binary]>=3.2,<4

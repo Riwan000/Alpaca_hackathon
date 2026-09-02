@@ -1,0 +1,14 @@
+Alembic migration environment (task P1-DB-2).
+
+Run from the repository root:
+
+    python -m alembic -c backend/alembic.ini upgrade head      # make migrate
+    python -m alembic -c backend/alembic.ini downgrade base     # make migrate-down
+    python -m alembic -c backend/alembic.ini revision -m "..."  # make migrate-revision m="..."
+
+Target database: backend.db.migration_url() — the Neon direct/unpooled DSN from
+the server-side .env (DATABASE_URL_UNPOOLED, task P1-DB-1), or an
+ALEMBIC_DATABASE_URL override.
+
+The real schema starts at P1-DB-3 (portfolio_snapshots); revision
+0001_baseline carries no DDL.
