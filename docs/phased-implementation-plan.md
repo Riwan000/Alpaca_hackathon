@@ -113,9 +113,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-11** — Migration: `monitoring_events` (id, cycle_id, trigger_type, observed jsonb, threshold, fired_at).
   - Test: `tests/db/test_schema.py::test_monitoring_events` — `trigger_type` constrained to the enum set.
   - [x] Confirm — `\d monitoring_events` matches.
-- [ ] **P1-DB-12** — Migration: `performance` (id, cycle_id, ts, portfolio_pnl, hedge_pnl, net_pnl, drawdown, hedge_cost, benchmark_pnl).
+- [x] **P1-DB-12** — Migration: `performance` (id, cycle_id, ts, portfolio_pnl, hedge_pnl, net_pnl, drawdown, hedge_cost, benchmark_pnl).
   - Test: `tests/db/test_schema.py::test_performance` — numeric columns present, `ts` indexed.
-  - [ ] Confirm — `\d performance` matches.
+  - [x] Confirm — `\d performance` matches.
 - [ ] **P1-DB-13** — Add FK constraints and indexes on `cycle_id`, `ts`, `snapshot_id`, `order_id`.
   - Test: `tests/db/test_schema.py::test_constraints_and_indexes` — every FK resolves; every listed index exists in `pg_indexes`.
   - [ ] Confirm — `\di` lists the `cycle_id` / `ts` / `snapshot_id` / `order_id` indexes.

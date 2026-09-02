@@ -832,6 +832,89 @@ def test_monitoring_events(tmp_path: Path) -> None:
     )
 
 
+def test_performance(tmp_path: Path) -> None:
+    """Task P1-DB-12: performance table schema, numeric metrics, and ts index."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "performance" in tables, f"Table 'performance' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("performance")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("performance")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "ts",
+            "portfolio_pnl",
+            "hedge_pnl",
+            "net_pnl",
+            "drawdown",
+            "hedge_cost",
+            "benchmark_pnl",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from performance"
+
+        # Check numeric types
+        from sqlalchemy.types import Numeric
+        for num_col in [
+            "portfolio_pnl",
+            "hedge_pnl",
+            "net_pnl",
+            "drawdown",
+            "hedge_cost",
+            "benchmark_pnl",
+        ]:
+            assert isinstance(col_by_name[num_col]["type"], Numeric)
+
+        # Check ts index
+        indexes = inspector.get_indexes("performance")
+        ts_index = next((idx for idx in indexes if "ts" in idx.get("column_names", [])), None)
+        assert ts_index is not None, f"Index on 'ts' column missing from performance; indexes: {indexes}"
+
+        metadata = MetaData()
+        perf_table = Table("performance", metadata, autoload_with=engine)
+
+        with engine.begin() as conn:
+            res = conn.execute(
+                insert(perf_table).values(
+                    cycle_id="cycle_perf_001",
+                    ts=datetime.datetime.now(datetime.timezone.utc),
+                    portfolio_pnl=decimal.Decimal("1250.5000"),
+                    hedge_pnl=decimal.Decimal("-320.0000"),
+                    net_pnl=decimal.Decimal("930.5000"),
+                    drawdown=decimal.Decimal("0.0245"),
+                    hedge_cost=decimal.Decimal("150.0000"),
+                    benchmark_pnl=decimal.Decimal("850.0000"),
+                )
+            )
+            assert res.inserted_primary_key[0] is not None
+
+            select_stmt = select(perf_table).where(perf_table.c.cycle_id == "cycle_perf_001")
+            row = conn.execute(select_stmt).mappings().one()
+            assert row["net_pnl"] == decimal.Decimal("930.5000")
+            assert row["drawdown"] == decimal.Decimal("0.0245")
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0010_monitoring_events", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0010_monitoring_events` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
 
 
 
