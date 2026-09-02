@@ -259,18 +259,18 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
   - [x] Confirm — **Decision: no separate table.** Risk metrics land as columns on `portfolio_snapshots` in P3-DB-3; risk-gate metrics ride the `RiskDecision` jsonb in `risk_checks`. Recorded in `docs/adr/0001-risk-metrics-storage.md`.
 
 ### Backend
-- [ ] **P2-BE-1** — `quant/portfolio/value.py` — portfolio value (cash + positions aggregation).
+- [x] **P2-BE-1** — `quant/portfolio/value.py` — portfolio value (cash + positions aggregation).
   - Test: `tests/quant/test_value.py` — long + short + cash → expected total; empty portfolio → cash only.
-  - [ ] Confirm — `pytest tests/quant/test_value.py -q` green.
-- [ ] **P2-BE-2** — `quant/portfolio/exposure.py` — per-position exposure, gross and net exposure.
+  - [x] Confirm — `pytest tests/quant/test_value.py -q` green.
+- [x] **P2-BE-2** — `quant/portfolio/exposure.py` — per-position exposure, gross and net exposure.
   - Test: `tests/quant/test_exposure.py` — per-position = qty·price·multiplier; gross ≠ net when a short is present.
-  - [ ] Confirm — `pytest tests/quant/test_exposure.py -q` green.
-- [ ] **P2-BE-3** — `quant/portfolio/concentration.py` — concentration ratio / HHI, top-N weight.
+  - [x] Confirm — `pytest tests/quant/test_exposure.py -q` green.
+- [x] **P2-BE-3** — `quant/portfolio/concentration.py` — concentration ratio / HHI, top-N weight.
   - Test: `tests/quant/test_concentration.py` — single holding → HHI 1.0; N equal holdings → 1/N.
-  - [ ] Confirm — `pytest tests/quant/test_concentration.py -q` green.
-- [ ] **P2-BE-4** — `quant/portfolio/drawdown.py` — drawdown, max drawdown, high-water mark.
+  - [x] Confirm — `pytest tests/quant/test_concentration.py -q` green.
+- [x] **P2-BE-4** — `quant/portfolio/drawdown.py` — drawdown, max drawdown, high-water mark.
   - Test: `tests/quant/test_drawdown.py` (P2-BE-17) — known equity curve → expected max DD; flat curve → 0; new high → HWM updates.
-  - [ ] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
 - [ ] **P2-BE-5** — `quant/risk/volatility.py` — portfolio volatility from returns / covariance.
   - Test: `tests/quant/test_volatility.py` (P2-BE-18) — constant returns → 0; known sample → expected annualized σ.
   - [ ] Confirm — `pytest tests/quant/test_volatility.py -q` green.
