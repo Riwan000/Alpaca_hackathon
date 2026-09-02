@@ -202,18 +202,18 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-FE-5** — API client module — base URL from env, typed fetch wrapper, normalized error shape.
   - Test: `src/api/client.test.ts` (MSW) — 2xx parses; non-2xx → normalized error; network failure handled.
   - [x] Confirm — point at a dead port; UI shows the normalized error, not a raw stack.
-- [ ] **P1-FE-6** — Shared TS types mirroring the 7 contracts (generate from the OpenAPI artifact or hand-write).
+- [x] **P1-FE-6** — Shared TS types mirroring the 7 contracts (generate from the OpenAPI artifact or hand-write).
   - Test: `src/api/types.test-d.ts` (`expect-type`/tsd) — generated types match the OpenAPI artifact; `tsc --noEmit` clean.
-  - [ ] Confirm — regenerate types; `tsc --noEmit` exits 0 with no diff.
-- [ ] **P1-FE-7** — Wire each route to the stub endpoints and render the payload to prove the pipe.
+  - [x] Confirm — regenerate types; `tsc --noEmit` exits 0 with no diff.
+- [x] **P1-FE-7** — Wire each route to the stub endpoints and render the payload to prove the pipe.
   - Test: `src/routes/*.test.tsx` (MSW stub bodies) — each route shows fetched data.
-  - [ ] Confirm — with the backend running, each route displays stub data.
-- [ ] **P1-FE-8** — Dev env config + README for `npm run dev` against the local backend.
+  - [x] Confirm — with the backend running, each route displays stub data.
+- [x] **P1-FE-8** — Dev env config + README for `npm run dev` against the local backend.
   - Test: CI step runs the README's documented commands end to end.
-  - [ ] Confirm — a teammate follows the README and gets a running app.
-- [ ] **P1-FE-9** *(added for test infra)* — vitest + React Testing Library + MSW setup (`src/test/setup.ts`, `src/test/server.ts`).
+  - [x] Confirm — a teammate follows the README and gets a running app.
+- [x] **P1-FE-9** *(added for test infra)* — vitest + React Testing Library + MSW setup (`src/test/setup.ts`, `src/test/server.ts`).
   - Test: `src/test/sanity.test.tsx` — `render` + one MSW handler resolves.
-  - [ ] Confirm — `npm test` runs the sanity test green.
+  - [x] Confirm — `npm test` runs the sanity test green.
 
 ### Tooling & CI
 - [ ] **P1-OPS-1** — `Makefile` with the targets this plan references: `dev`, `test`, `smoke`, `cov`, `migrate`, `seed`, `db-reset`, `db-fresh`, `openapi`, `demo-restore`.
@@ -298,18 +298,18 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [x] **P2-BE-13** — `quant/payoff/max_loss.py` — max loss and breakevens for multi-leg structures.
   - Test: `tests/quant/test_max_loss.py` (P2-BE-21) — put spread max loss = net debit; collar bounded both sides; breakevens correct.
   - [x] Confirm — `pytest tests/quant/test_max_loss.py -q` green.
-- [ ] **P2-BE-14** — `quant/sizing.py` — position sizing from budget and contract multiplier.
+- [x] **P2-BE-14** — `quant/sizing.py` — position sizing from budget and contract multiplier.
   - Test: `tests/quant/test_sizing.py` (P2-BE-22) — contracts = floor(budget / (premium·multiplier)); zero budget → 0; never negative.
-  - [ ] Confirm — `pytest tests/quant/test_sizing.py -q` green.
-- [ ] **P2-BE-15** — `quant/risk_limits.py` — limit checks (max hedge ratio, max notional, budget).
+  - [x] Confirm — `pytest tests/quant/test_sizing.py -q` green.
+- [x] **P2-BE-15** — `quant/risk_limits.py` — limit checks (max hedge ratio, max notional, budget).
   - Test: `tests/quant/test_risk_limits.py` (P2-BE-22) — over-limit → violation with reason; exactly at limit → pass.
-  - [ ] Confirm — `pytest tests/quant/test_risk_limits.py -q` green.
-- [ ] **P2-BE-16** — Shared numeric helpers (returns, annualization constants) — named constants, no magic numbers.
+  - [x] Confirm — `pytest tests/quant/test_risk_limits.py -q` green.
+- [x] **P2-BE-16** — Shared numeric helpers (returns, annualization constants) — named constants, no magic numbers.
   - Test: `tests/quant/test_helpers.py` — returns-from-prices matches by hand; `TRADING_DAYS_PER_YEAR` is a named constant, not inline.
-  - [ ] Confirm — grep shows no bare `252` / `365` literals in `quant/`.
-- [ ] **P2-BE-17** — Unit tests: drawdown + high-water mark. *(test task for P2-BE-4)*
+  - [x] Confirm — grep shows no bare `252` / `365` literals in `quant/`.
+- [x] **P2-BE-17** — Unit tests: drawdown + high-water mark. *(test task for P2-BE-4)*
   - Test: cases enumerated in P2-BE-4.
-  - [ ] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
 - [x] **P2-BE-18** — Unit tests: beta, volatility, correlation. *(test task for P2-BE-5/6/7)*
   - Test: cases enumerated in P2-BE-5/6/7.
   - [x] Confirm — `pytest tests/quant/test_beta.py tests/quant/test_volatility.py tests/quant/test_correlation.py -q` green.
@@ -319,12 +319,12 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [x] **P2-BE-20** — Unit tests: IV solver convergence and edge cases. *(test task for P2-BE-10)*
   - Test: cases in P2-BE-10 + deep ITM/OTM inputs.
   - [x] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
-- [ ] **P2-BE-21** — Unit tests: payoff curve + max loss for protective put, put spread, collar. *(test task for P2-BE-11/12/13)*
+- [x] **P2-BE-21** — Unit tests: payoff curve + max loss for protective put, put spread, collar. *(test task for P2-BE-11/12/13)*
   - Test: cases in P2-BE-11/12/13.
-  - [ ] Confirm — `pytest tests/quant/test_premium.py tests/quant/test_payoff_curve.py tests/quant/test_max_loss.py -q` green.
-- [ ] **P2-BE-22** — Unit tests: position sizing + risk limits (boundary cases). *(test task for P2-BE-14/15)*
+  - [x] Confirm — `pytest tests/quant/test_premium.py tests/quant/test_payoff_curve.py tests/quant/test_max_loss.py -q` green.
+- [x] **P2-BE-22** — Unit tests: position sizing + risk limits (boundary cases). *(test task for P2-BE-14/15)*
   - Test: cases in P2-BE-14/15.
-  - [ ] Confirm — `pytest tests/quant/test_sizing.py tests/quant/test_risk_limits.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_sizing.py tests/quant/test_risk_limits.py -q` green.
 - [ ] **P2-BE-23** — Coverage report ≥ 80% on `quant/`.
   - Test: `pytest --cov=backend/quant --cov-fail-under=80`.
   - [ ] Confirm — coverage summary line shows ≥ 80% and the command exits 0.
