@@ -271,24 +271,24 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [x] **P2-BE-4** — `quant/portfolio/drawdown.py` — drawdown, max drawdown, high-water mark.
   - Test: `tests/quant/test_drawdown.py` (P2-BE-17) — known equity curve → expected max DD; flat curve → 0; new high → HWM updates.
   - [x] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
-- [ ] **P2-BE-5** — `quant/risk/volatility.py` — portfolio volatility from returns / covariance.
+- [x] **P2-BE-5** — `quant/risk/volatility.py` — portfolio volatility from returns / covariance.
   - Test: `tests/quant/test_volatility.py` (P2-BE-18) — constant returns → 0; known sample → expected annualized σ.
-  - [ ] Confirm — `pytest tests/quant/test_volatility.py -q` green.
-- [ ] **P2-BE-6** — `quant/risk/beta.py` — portfolio beta vs a benchmark.
+  - [x] Confirm — `pytest tests/quant/test_volatility.py -q` green.
+- [x] **P2-BE-6** — `quant/risk/beta.py` — portfolio beta vs a benchmark.
   - Test: `tests/quant/test_beta.py` (P2-BE-18) — series identical to benchmark → 1.0; uncorrelated → ~0.
-  - [ ] Confirm — `pytest tests/quant/test_beta.py -q` green.
-- [ ] **P2-BE-7** — `quant/risk/correlation.py` — pairwise / matrix correlation.
+  - [x] Confirm — `pytest tests/quant/test_beta.py -q` green.
+- [x] **P2-BE-7** — `quant/risk/correlation.py` — pairwise / matrix correlation.
   - Test: `tests/quant/test_correlation.py` (P2-BE-18) — self-correlation 1.0; negated series → −1.0; matrix symmetric.
-  - [ ] Confirm — `pytest tests/quant/test_correlation.py -q` green.
-- [ ] **P2-BE-8** — `quant/risk/hedge_ratio.py` — hedge ratio, current vs target.
+  - [x] Confirm — `pytest tests/quant/test_correlation.py -q` green.
+- [x] **P2-BE-8** — `quant/risk/hedge_ratio.py` — hedge ratio, current vs target.
   - Test: `tests/quant/test_hedge_ratio.py` — full hedge → 1.0; no hedge → 0.0; drift = target − current.
-  - [ ] Confirm — `pytest tests/quant/test_hedge_ratio.py -q` green.
-- [ ] **P2-BE-9** — `quant/greeks/black_scholes.py` — option price plus delta, gamma, theta, vega.
+  - [x] Confirm — `pytest tests/quant/test_hedge_ratio.py -q` green.
+- [x] **P2-BE-9** — `quant/greeks/black_scholes.py` — option price plus delta, gamma, theta, vega.
   - Test: `tests/quant/test_greeks.py` (P2-BE-19) — price + each greek within tolerance of textbook reference values (ATM call/put).
-  - [ ] Confirm — `pytest tests/quant/test_greeks.py -q` green.
-- [ ] **P2-BE-10** — `quant/greeks/implied_vol.py` — IV solver (bisection or Newton).
+  - [x] Confirm — `pytest tests/quant/test_greeks.py -q` green.
+- [x] **P2-BE-10** — `quant/greeks/implied_vol.py` — IV solver (bisection or Newton).
   - Test: `tests/quant/test_implied_vol.py` (P2-BE-20) — price→IV→price round-trips within tol; non-convergent input raises, not hangs.
-  - [ ] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
 - [ ] **P2-BE-11** — `quant/payoff/premium.py` — premium and hedge cost as % of portfolio.
   - Test: `tests/quant/test_premium.py` (P2-BE-21) — cost % = premium·contracts·multiplier / portfolio value.
   - [ ] Confirm — `pytest tests/quant/test_premium.py -q` green.
@@ -310,15 +310,15 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [ ] **P2-BE-17** — Unit tests: drawdown + high-water mark. *(test task for P2-BE-4)*
   - Test: cases enumerated in P2-BE-4.
   - [ ] Confirm — `pytest tests/quant/test_drawdown.py -q` green.
-- [ ] **P2-BE-18** — Unit tests: beta, volatility, correlation. *(test task for P2-BE-5/6/7)*
+- [x] **P2-BE-18** — Unit tests: beta, volatility, correlation. *(test task for P2-BE-5/6/7)*
   - Test: cases enumerated in P2-BE-5/6/7.
-  - [ ] Confirm — `pytest tests/quant/test_beta.py tests/quant/test_volatility.py tests/quant/test_correlation.py -q` green.
-- [ ] **P2-BE-19** — Unit tests: Greeks vs known reference values. *(test task for P2-BE-9)*
+  - [x] Confirm — `pytest tests/quant/test_beta.py tests/quant/test_volatility.py tests/quant/test_correlation.py -q` green.
+- [x] **P2-BE-19** — Unit tests: Greeks vs known reference values. *(test task for P2-BE-9)*
   - Test: reference table in P2-BE-9.
-  - [ ] Confirm — `pytest tests/quant/test_greeks.py -q` green.
-- [ ] **P2-BE-20** — Unit tests: IV solver convergence and edge cases. *(test task for P2-BE-10)*
+  - [x] Confirm — `pytest tests/quant/test_greeks.py -q` green.
+- [x] **P2-BE-20** — Unit tests: IV solver convergence and edge cases. *(test task for P2-BE-10)*
   - Test: cases in P2-BE-10 + deep ITM/OTM inputs.
-  - [ ] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
 - [ ] **P2-BE-21** — Unit tests: payoff curve + max loss for protective put, put spread, collar. *(test task for P2-BE-11/12/13)*
   - Test: cases in P2-BE-11/12/13.
   - [ ] Confirm — `pytest tests/quant/test_premium.py tests/quant/test_payoff_curve.py tests/quant/test_max_loss.py -q` green.
