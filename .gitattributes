@@ -1,0 +1,6 @@
+# Keep shell-sensitive files LF regardless of core.autocrlf so `make` and the
+# CI runners (Linux) never see a stray CR.
+Makefile        text eol=lf
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
