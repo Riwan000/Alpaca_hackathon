@@ -86,9 +86,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-2** — Choose and wire migration tooling (Alembic) under `backend/`, run against Neon's direct (unpooled) connection string; add a `make migrate` entrypoint.
   - Test: `tests/db/test_migrations.py::test_up_then_down` — `migrate up` then `migrate down` run clean on a scratch DB.
   - [x] Confirm — `python -m alembic -c backend/alembic.ini upgrade head` (== `make migrate`; `make` not installed locally) on the empty Neon DB exits 0 and creates `alembic_version` (`alembic current` → `0001_baseline`). Down/up round-trip also clean.
-- [ ] **P1-DB-3** — Migration: `portfolio_snapshots` (id, cycle_id, ts, total_value, cash, equity, buying_power).
+- [x] **P1-DB-3** — Migration: `portfolio_snapshots` (id, cycle_id, ts, total_value, cash, equity, buying_power).
   - Test: `tests/db/test_schema.py::test_portfolio_snapshots` — table + every named column + type + PK present after `migrate`.
-  - [ ] Confirm — `\d portfolio_snapshots` in psql lists every column from the task line.
+  - [x] Confirm — `\d portfolio_snapshots` (via schema inspector / psql) lists every column from the task line with PK `id`.
 - [ ] **P1-DB-4** — Migration: `positions` (id, snapshot_id FK, symbol, qty, avg_price, market_value, asset_class, side).
   - Test: `tests/db/test_schema.py::test_positions` — columns + `snapshot_id` FK → `portfolio_snapshots(id)`.
   - [ ] Confirm — `\d positions` shows the FK; inserting an orphan `snapshot_id` fails.
