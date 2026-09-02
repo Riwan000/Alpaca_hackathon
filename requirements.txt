@@ -1,0 +1,7 @@
+# Minimal deps for the typed settings module + its tests (task P1-DB-1).
+# P1-BE-2 replaces this with the full backend dependency manifest
+# (fastapi, uvicorn, httpx, alpaca-py, langgraph, asyncpg, pytest-cov, ...).
+pydantic>=2.11,<3
+pydantic-settings>=2.10,<3
+python-dotenv>=1.0
+pytest>=8.4
