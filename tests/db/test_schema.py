@@ -655,6 +655,112 @@ def test_orders(tmp_path: Path) -> None:
     )
 
 
+def test_fills(tmp_path: Path) -> None:
+    """Task P1-DB-10: fills table schema, FK to orders, and cascade delete."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "fills" in tables, f"Table 'fills' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("fills")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("fills")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "order_id",
+            "leg_symbol",
+            "qty",
+            "price",
+            "filled_at",
+            "slippage",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from fills"
+
+        assert col_by_name["slippage"]["nullable"] is True
+
+        fks = inspector.get_foreign_keys("fills")
+        order_fk = next((fk for fk in fks if fk.get("constrained_columns") == ["order_id"]), None)
+        assert order_fk is not None, f"FK on order_id not found in {fks}"
+        assert order_fk["referred_table"] == "orders"
+        assert order_fk["referred_columns"] == ["id"]
+
+        metadata = MetaData()
+        orders_table = Table("orders", metadata, autoload_with=engine)
+        fills_table = Table("fills", metadata, autoload_with=engine)
+
+        # 1. Orphan insert must fail
+        with pytest.raises(IntegrityError):
+            with engine.begin() as conn:
+                if engine.dialect.name == "sqlite":
+                    conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+                conn.execute(
+                    insert(fills_table).values(
+                        order_id=999999,
+                        leg_symbol="SPY",
+                        qty=decimal.Decimal("10.0000"),
+                        price=decimal.Decimal("500.2500"),
+                        filled_at=datetime.datetime.now(datetime.timezone.utc),
+                        slippage=decimal.Decimal("0.0500"),
+                    )
+                )
+
+        # 2. Insert order and fill
+        with engine.begin() as conn:
+            if engine.dialect.name == "sqlite":
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+
+            ord_res = conn.execute(
+                insert(orders_table).values(
+                    cycle_id="cycle_fill_001",
+                    broker_order_id="alpaca_fill_test_1",
+                    status="FILLED",
+                    legs=[{"symbol": "SPY", "qty": 10}],
+                    submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                    **{"class": "simple"},
+                )
+            )
+            ord_id = ord_res.inserted_primary_key[0]
+
+            fill_res = conn.execute(
+                insert(fills_table).values(
+                    order_id=ord_id,
+                    leg_symbol="SPY",
+                    qty=decimal.Decimal("10.0000"),
+                    price=decimal.Decimal("500.2500"),
+                    filled_at=datetime.datetime.now(datetime.timezone.utc),
+                    slippage=decimal.Decimal("0.0500"),
+                )
+            )
+            assert fill_res.inserted_primary_key[0] is not None
+
+            # Delete the parent order and confirm cascade
+            from sqlalchemy import delete
+            conn.execute(delete(orders_table).where(orders_table.c.id == ord_id))
+            remaining_fills = conn.execute(
+                select(fills_table).where(fills_table.c.order_id == ord_id)
+            ).all()
+            assert len(remaining_fills) == 0
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0008_orders", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0008_orders` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
 
 
 

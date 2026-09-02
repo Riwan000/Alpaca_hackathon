@@ -107,9 +107,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-9** — Migration: `orders` (id, cycle_id, broker_order_id, class, legs jsonb, status, submitted_at).
   - Test: `tests/db/test_schema.py::test_orders` — `status` constrained; `broker_order_id` unique-nullable.
   - [x] Confirm — `\d orders`; two rows with null `broker_order_id` coexist.
-- [ ] **P1-DB-10** — Migration: `fills` (id, order_id FK, leg_symbol, qty, price, filled_at, slippage).
+- [x] **P1-DB-10** — Migration: `fills` (id, order_id FK, leg_symbol, qty, price, filled_at, slippage).
   - Test: `tests/db/test_schema.py::test_fills` — `order_id` FK → `orders(id)` with cascade rule as designed.
-  - [ ] Confirm — `\d fills` shows the FK.
+  - [x] Confirm — `\d fills` shows the FK.
 - [ ] **P1-DB-11** — Migration: `monitoring_events` (id, cycle_id, trigger_type, observed jsonb, threshold, fired_at).
   - Test: `tests/db/test_schema.py::test_monitoring_events` — `trigger_type` constrained to the enum set.
   - [ ] Confirm — `\d monitoring_events` matches.
