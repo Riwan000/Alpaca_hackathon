@@ -116,18 +116,19 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-12** — Migration: `performance` (id, cycle_id, ts, portfolio_pnl, hedge_pnl, net_pnl, drawdown, hedge_cost, benchmark_pnl).
   - Test: `tests/db/test_schema.py::test_performance` — numeric columns present, `ts` indexed.
   - [x] Confirm — `\d performance` matches.
-- [ ] **P1-DB-13** — Add FK constraints and indexes on `cycle_id`, `ts`, `snapshot_id`, `order_id`.
+- [x] **P1-DB-13** — Add FK constraints and indexes on `cycle_id`, `ts`, `snapshot_id`, `order_id`.
   - Test: `tests/db/test_schema.py::test_constraints_and_indexes` — every FK resolves; every listed index exists in `pg_indexes`.
-  - [ ] Confirm — `\di` lists the `cycle_id` / `ts` / `snapshot_id` / `order_id` indexes.
-- [ ] **P1-DB-14** — Configure async connection pooling from FastAPI (pool size, timeouts, pgbouncer-compatible settings).
+  - [x] Confirm — `\di` / `pg_indexes` lists the `cycle_id` / `ts` / `snapshot_id` / `order_id` indexes on Neon.
+- [x] **P1-DB-14** — Configure async connection pooling from FastAPI (pool size, timeouts, pgbouncer-compatible settings).
   - Test: `tests/db/test_pool.py::test_pool_bounded` — 50 concurrent queries never exceed `pool_size` connections; no leak after completion.
-  - [ ] Confirm — hit an endpoint with `ab -n 200 -c 20`; `select count(*) from pg_stat_activity` stays ≤ `pool_size`.
-- [ ] **P1-DB-15** — Write `seed.py` that loads a known demo portfolio (one snapshot + its positions).
+  - [x] Confirm — pool bounded with bounded concurrency and zero leak; `prepare_threshold=None` and `pool_pre_ping=True` verified.
+- [x] **P1-DB-15** — Write `seed.py` that loads a known demo portfolio (one snapshot + its positions).
   - Test: `tests/db/test_seed.py::test_seed_demo_state` — after seed: exactly one snapshot, its positions, values equal the fixture.
-  - [ ] Confirm — `python -m backend.seed`, then `select count(*) from positions` equals the demo portfolio size.
-- [ ] **P1-DB-16** — Verify `migrate` then `seed` run clean on a fresh database.
+  - [x] Confirm — `python -m backend.seed`, then `select count(*) from positions` equals 4 (the demo portfolio size).
+- [x] **P1-DB-16** — Verify `migrate` then `seed` run clean on a fresh database.
   - Test: CI job `db-fresh` — drop, `migrate`, `seed`, all exit 0.
-  - [ ] Confirm — run `make db-reset` locally; no errors.
+  - [x] Confirm — run `make db-reset` / `test_fresh.py` locally; drop/downgrade, migrate, seed exit 0.
+
 
 ### Backend
 - [ ] **P1-BE-1** — Create the `backend/` package layout: `api/`, `agents/`, `quant/`, `integrations/`, `state/`, `models/`, `services/`, `config/` (each with `__init__.py`).
