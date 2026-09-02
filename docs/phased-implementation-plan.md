@@ -251,12 +251,12 @@ The "source of truth" mandated by BRD §10 / Tech-Stack §6. Pure functions,
 no LLM, no I/O. Everything downstream reasons about these numbers.
 
 ### DB
-- [ ] **P2-DB-1** — (Optional) integration test that persists computed metrics into `portfolio_snapshots` through the repository layer.
-  - Test: `tests/db/test_metrics_persist.py` — compute → `repo.save` → read back equal.
-  - [ ] Confirm — run it; a row appears in `portfolio_snapshots`.
-- [ ] **P2-DB-2** — Decide whether risk metrics need storage beyond the snapshot; add a `risk_metrics` migration only if so.
+- [x] **P2-DB-1** — (Optional) integration test that persists computed metrics into `portfolio_snapshots` through the repository layer.
+  - Test: `tests/db/test_metrics_persist.py` — compute → `repo.save` → read back equal. (`backend/db/repository.py`: `PortfolioSnapshotRepository`.)
+  - [x] Confirm — run it; a row appears in `portfolio_snapshots`.
+- [x] **P2-DB-2** — Decide whether risk metrics need storage beyond the snapshot; add a `risk_metrics` migration only if so.
   - Test: if added, `tests/db/test_schema.py::test_risk_metrics`; else the decision is recorded.
-  - [ ] Confirm — decision written into `docs/` (ADR or a note in this file).
+  - [x] Confirm — **Decision: no separate table.** Risk metrics land as columns on `portfolio_snapshots` in P3-DB-3; risk-gate metrics ride the `RiskDecision` jsonb in `risk_checks`. Recorded in `docs/adr/0001-risk-metrics-storage.md`.
 
 ### Backend
 - [ ] **P2-BE-1** — `quant/portfolio/value.py` — portfolio value (cash + positions aggregation).
