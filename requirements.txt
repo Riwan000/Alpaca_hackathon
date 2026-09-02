@@ -1,14 +1,32 @@
-# Minimal deps for the typed settings module and migration tooling
-# (tasks P1-DB-1, P1-DB-2). P1-BE-2 replaces this with the full backend
-# dependency manifest (fastapi, uvicorn, httpx, alpaca-py, langgraph,
-# asyncpg, pytest-cov, ...).
+# Backend dependency manifest — task P1-BE-2.
+# Mirrors [project.dependencies] in pyproject.toml. Install with:
+#   pip install -r requirements.txt        (runtime + test)
+#   pip install -e ".[dev]"                (editable, same set)
+
+# --- Web / API ---------------------------------------------------------------
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+
+# --- Config / validation ---------------------------------------------------
 pydantic>=2.11,<3
 pydantic-settings>=2.10,<3
 python-dotenv>=1.0
-pytest>=8.4
 
-# Migrations (P1-DB-2) — Alembic over psycopg v3 against Neon Postgres.
-# >=1.16 for the `path_separator` key used in backend/alembic.ini.
+# --- HTTP / LLM / broker clients -----------------------------------------
+httpx>=0.28,<1
+openai>=1.40
+alpaca-py>=0.33,<1
+
+# --- Agent runtime -------------------------------------------------------
+langgraph>=1.0,<2
+
+# --- Database -----------------------------------------------------------
+asyncpg>=0.30,<1
 alembic>=1.16,<2
 SQLAlchemy>=2.0,<3
 psycopg[binary]>=3.2,<4
+
+# --- Test --------------------------------------------------------------
+pytest>=8.4
+pytest-cov>=5
+pytest-asyncio>=1.0

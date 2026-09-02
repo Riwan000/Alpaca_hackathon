@@ -1,5 +1,10 @@
 """Backend configuration package."""
 
-from backend.config.settings import Settings, get_settings
+from backend.config.settings import (
+    LlmProvider,
+    Settings,
+    get_settings,
+    get_settings_or_exit,
+)
 
-__all__ = ["Settings", "get_settings"]
+__all__ = ["LlmProvider", "Settings", "get_settings", "get_settings_or_exit"]
