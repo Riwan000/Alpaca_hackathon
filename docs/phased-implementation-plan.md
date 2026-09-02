@@ -92,9 +92,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-4** — Migration: `positions` (id, snapshot_id FK, symbol, qty, avg_price, market_value, asset_class, side).
   - Test: `tests/db/test_schema.py::test_positions` — columns + `snapshot_id` FK → `portfolio_snapshots(id)`.
   - [x] Confirm — `\d positions` shows the FK; inserting an orphan `snapshot_id` fails.
-- [ ] **P1-DB-5** — Migration: `agent_runs` (id, cycle_id, agent_name, inputs jsonb, outputs jsonb, error, started_at, finished_at, duration_ms).
+- [x] **P1-DB-5** — Migration: `agent_runs` (id, cycle_id, agent_name, inputs jsonb, outputs jsonb, error, started_at, finished_at, duration_ms).
   - Test: `tests/db/test_schema.py::test_agent_runs` — jsonb columns nullable, `duration_ms` integer.
-  - [ ] Confirm — `\d agent_runs` matches; a row with jsonb `inputs` inserts.
+  - [x] Confirm — `\d agent_runs` matches; a row with jsonb `inputs` inserts.
 - [ ] **P1-DB-6** — Migration: `strategy_hypotheses` (id, cycle_id, strategy_type, verdict, legs jsonb, metrics jsonb, rejection_reason).
   - Test: `tests/db/test_schema.py::test_strategy_hypotheses` — `verdict` constrained to the enum set.
   - [ ] Confirm — `\d strategy_hypotheses`; a bad `verdict` value is rejected.

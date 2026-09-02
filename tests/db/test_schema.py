@@ -222,3 +222,82 @@ def test_positions(tmp_path: Path) -> None:
     assert down.returncode == 0, (
         f"`alembic downgrade 0002_portfolio_snapshots` failed:\n{down.stdout}\n{down.stderr}"
     )
+
+
+def test_agent_runs(tmp_path: Path) -> None:
+    """Task P1-DB-5: agent_runs table schema and jsonb handling."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "agent_runs" in tables, f"Table 'agent_runs' not found in database; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("agent_runs")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("agent_runs")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "agent_name",
+            "inputs",
+            "outputs",
+            "error",
+            "started_at",
+            "finished_at",
+            "duration_ms",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from agent_runs"
+
+        # Check nullable columns
+        assert col_by_name["inputs"]["nullable"] is True
+        assert col_by_name["outputs"]["nullable"] is True
+        assert col_by_name["error"]["nullable"] is True
+        assert col_by_name["finished_at"]["nullable"] is True
+        assert col_by_name["duration_ms"]["nullable"] is True
+
+        from sqlalchemy.types import Integer
+
+        assert isinstance(col_by_name["duration_ms"]["type"], Integer)
+
+        # Verify row insertion with json inputs and nullable outputs
+        metadata = MetaData()
+        agent_runs_table = Table("agent_runs", metadata, autoload_with=engine)
+
+        with engine.begin() as conn:
+            stmt = insert(agent_runs_table).values(
+                cycle_id="cycle_agent_001",
+                agent_name="market_agent",
+                inputs={"symbols": ["AAPL", "SPY"], "lookback_days": 30},
+                outputs=None,
+                error=None,
+                started_at=datetime.datetime.now(datetime.timezone.utc),
+                finished_at=None,
+                duration_ms=None,
+            )
+            res = conn.execute(stmt)
+            inserted_id = res.inserted_primary_key[0]
+            assert inserted_id is not None
+
+            select_stmt = select(agent_runs_table).where(agent_runs_table.c.id == inserted_id)
+            row = conn.execute(select_stmt).mappings().one()
+            assert row["agent_name"] == "market_agent"
+            assert row["inputs"] == {"symbols": ["AAPL", "SPY"], "lookback_days": 30}
+            assert row["outputs"] is None
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0003_positions", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0003_positions` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
