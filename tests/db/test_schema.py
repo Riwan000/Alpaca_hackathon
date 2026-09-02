@@ -914,6 +914,158 @@ def test_performance(tmp_path: Path) -> None:
     )
 
 
+def test_constraints_and_indexes(tmp_path: Path) -> None:
+    """Task P1-DB-13: FK constraints and indexes on cycle_id, ts, snapshot_id, order_id."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+
+        # 1. Verify Foreign Keys
+        # positions -> portfolio_snapshots
+        pos_fks = inspector.get_foreign_keys("positions")
+        snap_fk = next((fk for fk in pos_fks if "snapshot_id" in fk.get("constrained_columns", [])), None)
+        assert snap_fk is not None, f"FK on snapshot_id missing: {pos_fks}"
+        assert snap_fk["referred_table"] == "portfolio_snapshots"
+        assert snap_fk["referred_columns"] == ["id"]
+
+        # strategy_decisions -> strategy_hypotheses
+        dec_fks = inspector.get_foreign_keys("strategy_decisions")
+        hypo_fk = next((fk for fk in dec_fks if "selected_hypothesis_id" in fk.get("constrained_columns", [])), None)
+        assert hypo_fk is not None, f"FK on selected_hypothesis_id missing: {dec_fks}"
+        assert hypo_fk["referred_table"] == "strategy_hypotheses"
+        assert hypo_fk["referred_columns"] == ["id"]
+
+        # fills -> orders
+        fill_fks = inspector.get_foreign_keys("fills")
+        order_fk = next((fk for fk in fill_fks if "order_id" in fk.get("constrained_columns", [])), None)
+        assert order_fk is not None, f"FK on order_id missing: {fill_fks}"
+        assert order_fk["referred_table"] == "orders"
+        assert order_fk["referred_columns"] == ["id"]
+
+        # 2. Verify Indexes on each table
+        required_indexes = {
+            "portfolio_snapshots": ["cycle_id", "ts"],
+            "positions": ["snapshot_id", "symbol"],
+            "agent_runs": ["cycle_id", "started_at"],
+            "strategy_hypotheses": ["cycle_id"],
+            "strategy_decisions": ["cycle_id", "selected_hypothesis_id"],
+            "risk_checks": ["cycle_id"],
+            "orders": ["cycle_id"],
+            "fills": ["order_id"],
+            "monitoring_events": ["cycle_id", "fired_at"],
+            "performance": ["cycle_id", "ts"],
+        }
+
+        for table_name, indexed_cols in required_indexes.items():
+            table_indexes = inspector.get_indexes(table_name)
+            indexed_columns_present = [
+                col
+                for idx in table_indexes
+                for col in idx.get("column_names", [])
+                if col is not None
+            ]
+            for col in indexed_cols:
+                assert col in indexed_columns_present, (
+                    f"Expected index on '{col}' in table '{table_name}', "
+                    f"found indexes: {table_indexes}"
+                )
+
+        # 3. Test functional behavior with sample data & FK integrity
+        metadata = MetaData()
+        portfolio_snapshots_table = Table("portfolio_snapshots", metadata, autoload_with=engine)
+        positions_table = Table("positions", metadata, autoload_with=engine)
+        orders_table = Table("orders", metadata, autoload_with=engine)
+        fills_table = Table("fills", metadata, autoload_with=engine)
+
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+
+        with engine.begin() as conn:
+            if engine.dialect.name == "sqlite":
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+
+            # Insert snapshot and position
+            snap_res = conn.execute(
+                insert(portfolio_snapshots_table).values(
+                    cycle_id="cycle_idx_001",
+                    ts=datetime.datetime.now(datetime.timezone.utc),
+                    total_value=decimal.Decimal("100000.0000"),
+                    cash=decimal.Decimal("25000.0000"),
+                    equity=decimal.Decimal("75000.0000"),
+                    buying_power=decimal.Decimal("50000.0000"),
+                )
+            )
+            snap_id = snap_res.inserted_primary_key[0]
+
+            conn.execute(
+                insert(positions_table).values(
+                    snapshot_id=snap_id,
+                    symbol="SPY",
+                    qty=decimal.Decimal("100.0000"),
+                    avg_price=decimal.Decimal("500.0000"),
+                    market_value=decimal.Decimal("50000.0000"),
+                    asset_class="us_equity",
+                    side="long",
+                )
+            )
+
+            # Insert order and fill
+            ord_res = conn.execute(
+                insert(orders_table).values(
+                    cycle_id="cycle_idx_001",
+                    broker_order_id="order_idx_test_1",
+                    status="FILLED",
+                    legs=[{"symbol": "SPY", "qty": 100}],
+                    submitted_at=datetime.datetime.now(datetime.timezone.utc),
+                    **{"class": "simple"},
+                )
+            )
+            ord_id = ord_res.inserted_primary_key[0]
+
+            conn.execute(
+                insert(fills_table).values(
+                    order_id=ord_id,
+                    leg_symbol="SPY",
+                    qty=decimal.Decimal("100.0000"),
+                    price=decimal.Decimal("500.0000"),
+                    filled_at=datetime.datetime.now(datetime.timezone.utc),
+                    slippage=decimal.Decimal("0.0200"),
+                )
+            )
+
+            # Query indexed columns
+            pos_row = conn.execute(
+                select(positions_table).where(positions_table.c.snapshot_id == snap_id)
+            ).mappings().one()
+            assert pos_row["symbol"] == "SPY"
+
+            fill_row = conn.execute(
+                select(fills_table).where(fills_table.c.order_id == ord_id)
+            ).mappings().one()
+            assert fill_row["price"] == decimal.Decimal("500.0000")
+
+    finally:
+        engine.dispose()
+
+    # 4. Verify clean downgrade to previous migration and upgrade back
+    down = _run_alembic("downgrade", "0011_performance", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0011_performance` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+    re_up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert re_up.returncode == 0, (
+        f"`alembic upgrade head` failed:\n{re_up.stdout}\n{re_up.stderr}"
+    )
+
+
+
 
 
 
