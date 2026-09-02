@@ -89,9 +89,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-3** — Migration: `portfolio_snapshots` (id, cycle_id, ts, total_value, cash, equity, buying_power).
   - Test: `tests/db/test_schema.py::test_portfolio_snapshots` — table + every named column + type + PK present after `migrate`.
   - [x] Confirm — `\d portfolio_snapshots` (via schema inspector / psql) lists every column from the task line with PK `id`.
-- [ ] **P1-DB-4** — Migration: `positions` (id, snapshot_id FK, symbol, qty, avg_price, market_value, asset_class, side).
+- [x] **P1-DB-4** — Migration: `positions` (id, snapshot_id FK, symbol, qty, avg_price, market_value, asset_class, side).
   - Test: `tests/db/test_schema.py::test_positions` — columns + `snapshot_id` FK → `portfolio_snapshots(id)`.
-  - [ ] Confirm — `\d positions` shows the FK; inserting an orphan `snapshot_id` fails.
+  - [x] Confirm — `\d positions` shows the FK; inserting an orphan `snapshot_id` fails.
 - [ ] **P1-DB-5** — Migration: `agent_runs` (id, cycle_id, agent_name, inputs jsonb, outputs jsonb, error, started_at, finished_at, duration_ms).
   - Test: `tests/db/test_schema.py::test_agent_runs` — jsonb columns nullable, `duration_ms` integer.
   - [ ] Confirm — `\d agent_runs` matches; a row with jsonb `inputs` inserts.

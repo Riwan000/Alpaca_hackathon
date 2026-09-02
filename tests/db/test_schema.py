@@ -1,7 +1,7 @@
 """Database schema tests — task P1-DB-3+.
 
 Tests that running Alembic migrations produces the expected tables, columns,
-types, primary keys, and constraints.
+types, primary keys, foreign keys, and constraints.
 """
 
 from __future__ import annotations
@@ -13,7 +13,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-from sqlalchemy import create_engine, inspect, insert, select, Table, MetaData
+import pytest
+from sqlalchemy import (
+    MetaData,
+    Table,
+    create_engine,
+    inspect,
+    insert,
+    select,
+    text,
+)
+from sqlalchemy.exc import IntegrityError
 
 from backend.db import OVERRIDE_ENV_VAR, normalize_driver
 
@@ -40,7 +50,6 @@ def test_portfolio_snapshots(tmp_path: Path) -> None:
     """Task P1-DB-3: portfolio_snapshots table creation and schema validation."""
     db_url = _scratch_url(tmp_path)
 
-    # 1. Run migrations up to head
     up = _run_alembic("upgrade", "head", db_url=db_url)
     assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
 
@@ -52,13 +61,11 @@ def test_portfolio_snapshots(tmp_path: Path) -> None:
             f"Table 'portfolio_snapshots' not found in database; found {tables}"
         )
 
-        # 2. Verify Primary Key
         pk_constraint = inspector.get_pk_constraint("portfolio_snapshots")
         assert pk_constraint["constrained_columns"] == ["id"], (
             f"Expected primary key ['id'], got {pk_constraint['constrained_columns']}"
         )
 
-        # 3. Verify Columns
         columns = inspector.get_columns("portfolio_snapshots")
         col_by_name = {c["name"]: c for c in columns}
 
@@ -74,24 +81,14 @@ def test_portfolio_snapshots(tmp_path: Path) -> None:
         for col_name in expected_columns:
             assert col_name in col_by_name, f"Column '{col_name}' missing from portfolio_snapshots"
 
-        # Check types
         from sqlalchemy.types import BigInteger, DateTime, Integer, Numeric, String
 
-        assert isinstance(col_by_name["id"]["type"], (Integer, BigInteger)), (
-            f"id type unexpected: {col_by_name['id']['type']}"
-        )
-        assert isinstance(col_by_name["cycle_id"]["type"], String), (
-            f"cycle_id type unexpected: {col_by_name['cycle_id']['type']}"
-        )
-        assert isinstance(col_by_name["ts"]["type"], DateTime), (
-            f"ts type unexpected: {col_by_name['ts']['type']}"
-        )
+        assert isinstance(col_by_name["id"]["type"], (Integer, BigInteger))
+        assert isinstance(col_by_name["cycle_id"]["type"], String)
+        assert isinstance(col_by_name["ts"]["type"], DateTime)
         for num_col in ["total_value", "cash", "equity", "buying_power"]:
-            assert isinstance(col_by_name[num_col]["type"], Numeric), (
-                f"{num_col} type unexpected: {col_by_name[num_col]['type']}"
-            )
+            assert isinstance(col_by_name[num_col]["type"], Numeric)
 
-        # 4. Verify insertion and retrieval
         metadata = MetaData()
         portfolio_snapshots_table = Table("portfolio_snapshots", metadata, autoload_with=engine)
 
@@ -108,7 +105,6 @@ def test_portfolio_snapshots(tmp_path: Path) -> None:
             inserted_id = result.inserted_primary_key[0]
             assert inserted_id is not None
 
-            # Query back
             select_stmt = select(portfolio_snapshots_table).where(
                 portfolio_snapshots_table.c.id == inserted_id
             )
@@ -120,17 +116,109 @@ def test_portfolio_snapshots(tmp_path: Path) -> None:
     finally:
         engine.dispose()
 
-    # 5. Verify downgrade unwinds cleanly
     down = _run_alembic("downgrade", "0001_baseline", db_url=db_url)
     assert down.returncode == 0, (
         f"`alembic downgrade 0001_baseline` failed:\n{down.stdout}\n{down.stderr}"
     )
 
+
+def test_positions(tmp_path: Path) -> None:
+    """Task P1-DB-4: positions table and FK constraint to portfolio_snapshots."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
     engine = create_engine(normalize_driver(db_url))
     try:
-        tables = inspect(engine).get_table_names()
-        assert "portfolio_snapshots" not in tables, (
-            f"Table 'portfolio_snapshots' still exists after downgrade: {tables}"
-        )
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "positions" in tables, f"Table 'positions' not found in database; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("positions")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("positions")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "snapshot_id",
+            "symbol",
+            "qty",
+            "avg_price",
+            "market_value",
+            "asset_class",
+            "side",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from positions"
+
+        fks = inspector.get_foreign_keys("positions")
+        assert len(fks) >= 1, "Expected at least one foreign key on positions"
+        snapshot_fk = next((fk for fk in fks if fk.get("constrained_columns") == ["snapshot_id"]), None)
+        assert snapshot_fk is not None, f"Foreign key on snapshot_id not found: {fks}"
+        assert snapshot_fk["referred_table"] == "portfolio_snapshots"
+        assert snapshot_fk["referred_columns"] == ["id"]
+
+        # Insert a parent snapshot and child position
+        metadata = MetaData()
+        portfolio_snapshots_table = Table("portfolio_snapshots", metadata, autoload_with=engine)
+        positions_table = Table("positions", metadata, autoload_with=engine)
+
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+
+        # Orphan insert should fail when foreign keys are enforced
+        with pytest.raises(IntegrityError):
+            with engine.begin() as conn:
+                if engine.dialect.name == "sqlite":
+                    conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+                conn.execute(
+                    insert(positions_table).values(
+                        snapshot_id=999999,
+                        symbol="AAPL",
+                        qty=decimal.Decimal("10.0000"),
+                        avg_price=decimal.Decimal("150.0000"),
+                        market_value=decimal.Decimal("1500.0000"),
+                        asset_class="us_equity",
+                        side="long",
+                    )
+                )
+
+        with engine.begin() as conn:
+            snap_res = conn.execute(
+                insert(portfolio_snapshots_table).values(
+                    cycle_id="cycle_pos_001",
+                    ts=datetime.datetime.now(datetime.timezone.utc),
+                    total_value=decimal.Decimal("10000.0000"),
+                    cash=decimal.Decimal("8500.0000"),
+                    equity=decimal.Decimal("1500.0000"),
+                    buying_power=decimal.Decimal("8500.0000"),
+                )
+            )
+            snap_id = snap_res.inserted_primary_key[0]
+
+            pos_res = conn.execute(
+                insert(positions_table).values(
+                    snapshot_id=snap_id,
+                    symbol="AAPL",
+                    qty=decimal.Decimal("10.0000"),
+                    avg_price=decimal.Decimal("150.0000"),
+                    market_value=decimal.Decimal("1500.0000"),
+                    asset_class="us_equity",
+                    side="long",
+                )
+            )
+            pos_id = pos_res.inserted_primary_key[0]
+            assert pos_id is not None
+
     finally:
         engine.dispose()
+
+    # Verify downgrade
+    down = _run_alembic("downgrade", "0002_portfolio_snapshots", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0002_portfolio_snapshots` failed:\n{down.stdout}\n{down.stderr}"
+    )
