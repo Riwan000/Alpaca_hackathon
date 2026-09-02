@@ -1,0 +1,2140 @@
+{
+  "components": {
+    "schemas": {
+      "AssetClass": {
+        "description": "Coarse asset classification for a held position.",
+        "enum": [
+          "EQUITY",
+          "OPTION",
+          "CASH"
+        ],
+        "title": "AssetClass",
+        "type": "string"
+      },
+      "BuildInfo": {
+        "properties": {
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "sha": {
+            "title": "Sha",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "time",
+          "environment"
+        ],
+        "title": "BuildInfo",
+        "type": "object"
+      },
+      "ComparisonRow": {
+        "additionalProperties": false,
+        "description": "One row of the Strategy Manager's comparison table (BRD §17 step 2).",
+        "properties": {
+          "cost": {
+            "minimum": 0.0,
+            "title": "Cost",
+            "type": "number"
+          },
+          "downside_protection_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downside Protection Pct"
+          },
+          "liquidity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidity"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/StrategyType"
+          },
+          "upside_giveup_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upside Giveup Pct"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "strategy",
+          "cost"
+        ],
+        "title": "ComparisonRow",
+        "type": "object"
+      },
+      "CurrentHedge": {
+        "additionalProperties": false,
+        "description": "The hedge currently on the book, if any.",
+        "properties": {
+          "active": {
+            "default": false,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          },
+          "expiration": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiration"
+          },
+          "hedge_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge Pnl"
+          },
+          "hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge Ratio"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/OptionLeg"
+            },
+            "title": "Legs",
+            "type": "array"
+          },
+          "strategy_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Hedge Ratio"
+          }
+        },
+        "title": "CurrentHedge",
+        "type": "object"
+      },
+      "DecisionType": {
+        "description": "Strategy Manager selection outcome (BRD §17 step 4).",
+        "enum": [
+          "SELECT_STRATEGY",
+          "NO_TRADE",
+          "REASSESS"
+        ],
+        "title": "DecisionType",
+        "type": "string"
+      },
+      "ExecutionPlan": {
+        "additionalProperties": false,
+        "description": "A ready-to-submit plan built from an approved :class:`RiskDecision`.",
+        "properties": {
+          "approval_id": {
+            "description": "id of the RiskDecision that approved this plan",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/OrderConstraints"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "estimated_cost": {
+            "minimum": 0.0,
+            "title": "Estimated Cost",
+            "type": "number"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/OptionLeg"
+            },
+            "minItems": 1,
+            "title": "Legs",
+            "type": "array"
+          },
+          "order_class": {
+            "default": "MLEG",
+            "description": "MLEG/COMBO for multi-leg, SINGLE otherwise",
+            "title": "Order Class",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/StrategyType"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "approval_id",
+          "strategy",
+          "legs",
+          "estimated_cost"
+        ],
+        "title": "ExecutionPlan",
+        "type": "object"
+      },
+      "ExecutionResult": {
+        "additionalProperties": false,
+        "description": "Truthful terminal report of an execution attempt (BRD §23).",
+        "properties": {
+          "actual_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Cost"
+          },
+          "broker_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Order Id"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "failed_legs": {
+            "items": {
+              "$ref": "#/components/schemas/FailedLeg"
+            },
+            "title": "Failed Legs",
+            "type": "array"
+          },
+          "filled_legs": {
+            "items": {
+              "$ref": "#/components/schemas/FilledLeg"
+            },
+            "title": "Filled Legs",
+            "type": "array"
+          },
+          "order_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Order Ids",
+            "type": "array"
+          },
+          "slippage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slippage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "status"
+        ],
+        "title": "ExecutionResult",
+        "type": "object"
+      },
+      "ExecutionStatus": {
+        "description": "Terminal state of an execution attempt (BRD §23).",
+        "enum": [
+          "FILLED",
+          "PARTIALLY_FILLED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "ExecutionStatus",
+        "type": "string"
+      },
+      "FailedLeg": {
+        "additionalProperties": false,
+        "description": "A leg that did not fill, with the reason.",
+        "properties": {
+          "leg_symbol": {
+            "title": "Leg Symbol",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "leg_symbol",
+          "reason"
+        ],
+        "title": "FailedLeg",
+        "type": "object"
+      },
+      "FilledLeg": {
+        "additionalProperties": false,
+        "description": "A leg that filled, with realized price and slippage vs the expected price.",
+        "properties": {
+          "filled_at": {
+            "format": "date-time",
+            "title": "Filled At",
+            "type": "string"
+          },
+          "leg_symbol": {
+            "title": "Leg Symbol",
+            "type": "string"
+          },
+          "price": {
+            "minimum": 0.0,
+            "title": "Price",
+            "type": "number"
+          },
+          "qty": {
+            "exclusiveMinimum": 0.0,
+            "title": "Qty",
+            "type": "integer"
+          },
+          "slippage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slippage"
+          }
+        },
+        "required": [
+          "leg_symbol",
+          "qty",
+          "price",
+          "filled_at"
+        ],
+        "title": "FilledLeg",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "build": {
+            "$ref": "#/components/schemas/BuildInfo"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "build"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HedgeAction": {
+        "description": "Portfolio-level action a hypothesis or reassessment proposes.\n\nCovers both a fresh hedge and the adaptive-lifecycle outcomes in BRD §28\n(``MAINTAIN`` / ``INCREASE`` / ``DECREASE`` / ``REMOVE`` / ``REPLACE`` /\n``NO_TRADE``).",
+        "enum": [
+          "NEW_HEDGE",
+          "INCREASE",
+          "DECREASE",
+          "MAINTAIN",
+          "REMOVE",
+          "REPLACE",
+          "NO_TRADE"
+        ],
+        "title": "HedgeAction",
+        "type": "string"
+      },
+      "HedgeContext": {
+        "additionalProperties": false,
+        "description": "Standardized context assembled from the analysis agents (BRD §14).",
+        "properties": {
+          "current_hedge": {
+            "$ref": "#/components/schemas/CurrentHedge"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "degraded_sections": {
+            "description": "sections returned in a degraded state (a failed analysis agent)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Degraded Sections",
+            "type": "array"
+          },
+          "market_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "news_context": {
+            "items": {
+              "$ref": "#/components/schemas/NewsItem"
+            },
+            "title": "News Context",
+            "type": "array"
+          },
+          "objective": {
+            "$ref": "#/components/schemas/HedgeObjective"
+          },
+          "option_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/OptionCandidate"
+            },
+            "title": "Option Candidates",
+            "type": "array"
+          },
+          "portfolio_state": {
+            "$ref": "#/components/schemas/PortfolioState"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "stock_state": {
+            "items": {
+              "$ref": "#/components/schemas/StockView"
+            },
+            "title": "Stock State",
+            "type": "array"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "timestamp",
+          "portfolio_state",
+          "objective"
+        ],
+        "title": "HedgeContext",
+        "type": "object"
+      },
+      "HedgeMetrics": {
+        "additionalProperties": false,
+        "description": "Quantitative summary of a hypothesis — every number sourced from ``quant/``.",
+        "properties": {
+          "breakevens": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Breakevens",
+            "type": "array"
+          },
+          "cost_pct_of_portfolio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Pct Of Portfolio"
+          },
+          "downside_protection_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downside Protection Pct"
+          },
+          "hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge Ratio"
+          },
+          "max_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Loss"
+          },
+          "net_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Delta"
+          },
+          "net_gamma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Gamma"
+          },
+          "net_theta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Theta"
+          },
+          "net_vega": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Vega"
+          }
+        },
+        "title": "HedgeMetrics",
+        "type": "object"
+      },
+      "HedgeObjective": {
+        "additionalProperties": false,
+        "description": "The user / project objective and hard budget the agents must respect.",
+        "properties": {
+          "drawdown_tolerance_pct": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Drawdown Tolerance Pct",
+            "type": "number"
+          },
+          "max_hedge_budget_pct": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Max Hedge Budget Pct",
+            "type": "number"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "target_hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Hedge Ratio"
+          }
+        },
+        "required": [
+          "max_hedge_budget_pct",
+          "drawdown_tolerance_pct"
+        ],
+        "title": "HedgeObjective",
+        "type": "object"
+      },
+      "LlmDebugResponse": {
+        "properties": {
+          "api_key_configured": {
+            "title": "Api Key Configured",
+            "type": "boolean"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "base_url",
+          "api_key_configured"
+        ],
+        "title": "LlmDebugResponse",
+        "type": "object"
+      },
+      "MarketState": {
+        "additionalProperties": false,
+        "description": "Regime / index / volatility environment from the Market Analysis Agent.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "index_trend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index Trend"
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime"
+          },
+          "vix": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vix"
+          }
+        },
+        "title": "MarketState",
+        "type": "object"
+      },
+      "MonitoringState": {
+        "additionalProperties": false,
+        "description": "Rolling monitoring snapshot for one cycle (BRD §24).",
+        "properties": {
+          "active_triggers": {
+            "items": {
+              "$ref": "#/components/schemas/TriggerType"
+            },
+            "title": "Active Triggers",
+            "type": "array"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "cooldown_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooldown Until"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawdown"
+          },
+          "gross_exposure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Exposure"
+          },
+          "hedge_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge Pnl"
+          },
+          "hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge Ratio"
+          },
+          "in_cooldown": {
+            "default": false,
+            "title": "In Cooldown",
+            "type": "boolean"
+          },
+          "portfolio_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Value"
+          },
+          "reassessment_recommended": {
+            "default": false,
+            "title": "Reassessment Recommended",
+            "type": "boolean"
+          },
+          "target_hedge_ratio": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Hedge Ratio"
+          },
+          "time_to_expiration_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To Expiration Days"
+          },
+          "trigger_history": {
+            "items": {
+              "$ref": "#/components/schemas/TriggerObservation"
+            },
+            "title": "Trigger History",
+            "type": "array"
+          },
+          "volatility": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volatility"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "as_of"
+        ],
+        "title": "MonitoringState",
+        "type": "object"
+      },
+      "NewsItem": {
+        "additionalProperties": false,
+        "description": "A normalized, relevance-filtered article or event (BRD §13).",
+        "properties": {
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "is_event": {
+            "default": false,
+            "title": "Is Event",
+            "type": "boolean"
+          },
+          "sentiment": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiment"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "headline",
+          "ts"
+        ],
+        "title": "NewsItem",
+        "type": "object"
+      },
+      "OptionCandidate": {
+        "additionalProperties": false,
+        "description": "A candidate contract surfaced by the Options Analysis Agent (BRD §13).",
+        "properties": {
+          "ask": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask"
+          },
+          "bid": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "expiration": {
+            "format": "date",
+            "title": "Expiration",
+            "type": "string"
+          },
+          "gamma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gamma"
+          },
+          "iv": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iv"
+          },
+          "liquidity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidity"
+          },
+          "open_interest": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Interest"
+          },
+          "premium": {
+            "minimum": 0.0,
+            "title": "Premium",
+            "type": "number"
+          },
+          "right": {
+            "$ref": "#/components/schemas/OptionRight"
+          },
+          "strike": {
+            "exclusiveMinimum": 0.0,
+            "title": "Strike",
+            "type": "number"
+          },
+          "theta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theta"
+          },
+          "underlying": {
+            "title": "Underlying",
+            "type": "string"
+          },
+          "vega": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vega"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          }
+        },
+        "required": [
+          "underlying",
+          "right",
+          "strike",
+          "expiration",
+          "premium"
+        ],
+        "title": "OptionCandidate",
+        "type": "object"
+      },
+      "OptionLeg": {
+        "additionalProperties": false,
+        "description": "One option leg of a hedge structure.",
+        "properties": {
+          "expiration": {
+            "format": "date",
+            "title": "Expiration",
+            "type": "string"
+          },
+          "limit_price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Price"
+          },
+          "occ_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "full OCC option identifier when resolved",
+            "title": "Occ Symbol"
+          },
+          "quantity": {
+            "description": "number of contracts (always positive)",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "right": {
+            "$ref": "#/components/schemas/OptionRight"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide"
+          },
+          "strike": {
+            "exclusiveMinimum": 0.0,
+            "title": "Strike",
+            "type": "number"
+          },
+          "underlying": {
+            "title": "Underlying",
+            "type": "string"
+          }
+        },
+        "required": [
+          "underlying",
+          "right",
+          "side",
+          "strike",
+          "expiration",
+          "quantity"
+        ],
+        "title": "OptionLeg",
+        "type": "object"
+      },
+      "OptionRight": {
+        "description": "Option contract right.",
+        "enum": [
+          "CALL",
+          "PUT"
+        ],
+        "title": "OptionRight",
+        "type": "string"
+      },
+      "OrderConstraints": {
+        "additionalProperties": false,
+        "description": "Order-level constraints and the pre-flight price band (BRD §21).",
+        "properties": {
+          "allow_legging": {
+            "default": false,
+            "description": "permit independent legs when a combo order is unsupported",
+            "title": "Allow Legging",
+            "type": "boolean"
+          },
+          "limit_price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Price"
+          },
+          "order_type": {
+            "default": "LIMIT",
+            "title": "Order Type",
+            "type": "string"
+          },
+          "price_tolerance_pct": {
+            "default": 0.05,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Price Tolerance Pct",
+            "type": "number"
+          },
+          "time_in_force": {
+            "default": "DAY",
+            "title": "Time In Force",
+            "type": "string"
+          }
+        },
+        "title": "OrderConstraints",
+        "type": "object"
+      },
+      "OrderSide": {
+        "description": "Direction of a leg or position.",
+        "enum": [
+          "BUY",
+          "SELL"
+        ],
+        "title": "OrderSide",
+        "type": "string"
+      },
+      "PayoffPoint": {
+        "additionalProperties": false,
+        "description": "One ``(underlying price, portfolio P&L)`` sample of the payoff curve.",
+        "properties": {
+          "pnl": {
+            "title": "Pnl",
+            "type": "number"
+          },
+          "price": {
+            "minimum": 0.0,
+            "title": "Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "price",
+          "pnl"
+        ],
+        "title": "PayoffPoint",
+        "type": "object"
+      },
+      "PortfolioPosition": {
+        "additionalProperties": false,
+        "description": "A single held position inside :class:`PortfolioState`.",
+        "properties": {
+          "asset_class": {
+            "$ref": "#/components/schemas/AssetClass",
+            "default": "EQUITY"
+          },
+          "avg_price": {
+            "minimum": 0.0,
+            "title": "Avg Price",
+            "type": "number"
+          },
+          "market_value": {
+            "title": "Market Value",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "number"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide",
+            "default": "BUY"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "unrealized_pl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pl"
+          }
+        },
+        "required": [
+          "symbol",
+          "qty",
+          "avg_price",
+          "market_value"
+        ],
+        "title": "PortfolioPosition",
+        "type": "object"
+      },
+      "PortfolioState": {
+        "additionalProperties": false,
+        "description": "Aggregate portfolio value plus the risk metrics computed in ``quant/``.",
+        "properties": {
+          "beta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beta"
+          },
+          "buying_power": {
+            "title": "Buying Power",
+            "type": "number"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "number"
+          },
+          "concentration_hhi": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concentration Hhi"
+          },
+          "drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawdown"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          },
+          "gross_exposure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Exposure"
+          },
+          "max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown"
+          },
+          "net_exposure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Exposure"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioPosition"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "total_value": {
+            "title": "Total Value",
+            "type": "number"
+          },
+          "volatility": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volatility"
+          }
+        },
+        "required": [
+          "total_value",
+          "cash",
+          "equity",
+          "buying_power"
+        ],
+        "title": "PortfolioState",
+        "type": "object"
+      },
+      "RiskCheck": {
+        "additionalProperties": false,
+        "description": "One deterministic check with its pass/fail result and the numbers behind it.",
+        "properties": {
+          "category": {
+            "description": "PORTFOLIO | POSITION_LIMITS | COST | OPTIONS | EXECUTION",
+            "title": "Category",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "passed"
+        ],
+        "title": "RiskCheck",
+        "type": "object"
+      },
+      "RiskDecision": {
+        "additionalProperties": false,
+        "description": "Structured pass/fail with per-check reasons (BRD §20).",
+        "properties": {
+          "approved_hypothesis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyHypothesis"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the (possibly modified) hypothesis cleared for execution"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/RiskCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "modifications": {
+            "items": {
+              "$ref": "#/components/schemas/RiskModification"
+            },
+            "title": "Modifications",
+            "type": "array"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/RiskVerdict"
+          },
+          "violations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Violations",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "verdict",
+          "rationale"
+        ],
+        "title": "RiskDecision",
+        "type": "object"
+      },
+      "RiskModification": {
+        "additionalProperties": false,
+        "description": "A permitted adjustment the Risk Agent proposes instead of rejecting (BRD §20).",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "from_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Value"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Value"
+          }
+        },
+        "required": [
+          "field",
+          "reason"
+        ],
+        "title": "RiskModification",
+        "type": "object"
+      },
+      "RiskVerdict": {
+        "description": "Risk Agent outcome (BRD §20) — the non-negotiable safety gate.",
+        "enum": [
+          "APPROVE",
+          "MODIFY",
+          "REJECT"
+        ],
+        "title": "RiskVerdict",
+        "type": "string"
+      },
+      "StockView": {
+        "additionalProperties": false,
+        "description": "Per-holding risk note, momentum and key price levels.",
+        "properties": {
+          "key_levels": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Key Levels",
+            "type": "array"
+          },
+          "momentum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Momentum"
+          },
+          "risk_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Note"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "title": "StockView",
+        "type": "object"
+      },
+      "StrategyDecision": {
+        "additionalProperties": false,
+        "description": "The Strategy Manager's reasoned selection (BRD §18).",
+        "properties": {
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyHypothesis"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "comparison": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonRow"
+            },
+            "title": "Comparison",
+            "type": "array"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/DecisionType"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "reassessment_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reassessment Conditions",
+            "type": "array"
+          },
+          "selected_hypothesis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyHypothesis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selected_strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cycle_id",
+          "decision",
+          "rationale"
+        ],
+        "title": "StrategyDecision",
+        "type": "object"
+      },
+      "StrategyHypothesis": {
+        "additionalProperties": false,
+        "description": "A single strategy proposal from one Strategy Agent (BRD §16).",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/HedgeAction"
+          },
+          "cost": {
+            "description": "absolute premium/debit in account currency",
+            "minimum": 0.0,
+            "title": "Cost",
+            "type": "number"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "hedge_metrics": {
+            "$ref": "#/components/schemas/HedgeMetrics"
+          },
+          "legs": {
+            "items": {
+              "$ref": "#/components/schemas/OptionLeg"
+            },
+            "title": "Legs",
+            "type": "array"
+          },
+          "liquidity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidity"
+          },
+          "payoff_profile": {
+            "items": {
+              "$ref": "#/components/schemas/PayoffPoint"
+            },
+            "title": "Payoff Profile",
+            "type": "array"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "rejection_conditions": {
+            "description": "conditions under which this proposal stops being valid",
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejection Conditions",
+            "type": "array"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "why the agent rejected its own family (viable is False)",
+            "title": "Rejection Reason"
+          },
+          "risks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Risks",
+            "type": "array"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/StrategyType"
+          },
+          "tradeoffs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tradeoffs",
+            "type": "array"
+          },
+          "viable": {
+            "title": "Viable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "strategy",
+          "action",
+          "viable",
+          "cost",
+          "rationale"
+        ],
+        "title": "StrategyHypothesis",
+        "type": "object"
+      },
+      "StrategyType": {
+        "description": "The four hedge strategy families in the MVP (BRD §15).",
+        "enum": [
+          "PROTECTIVE_PUT",
+          "PUT_SPREAD",
+          "COLLAR",
+          "NO_HEDGE"
+        ],
+        "title": "StrategyType",
+        "type": "string"
+      },
+      "TriggerObservation": {
+        "additionalProperties": false,
+        "description": "One evaluated trigger — what was observed against its threshold.",
+        "properties": {
+          "breached": {
+            "default": true,
+            "title": "Breached",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "observed_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Value"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "trigger_type": {
+            "$ref": "#/components/schemas/TriggerType"
+          }
+        },
+        "required": [
+          "trigger_type",
+          "observed_at"
+        ],
+        "title": "TriggerObservation",
+        "type": "object"
+      },
+      "TriggerType": {
+        "description": "Monitoring trigger taxonomy — mirrors ``trigger_type_enum`` (migration 0010).",
+        "enum": [
+          "PORTFOLIO_DELTA",
+          "VOLATILITY_SPIKE",
+          "CORRELATION_BREAKDOWN",
+          "DRAWDOWN_LIMIT",
+          "TIME_ELAPSED",
+          "MANUAL"
+        ],
+        "title": "TriggerType",
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "title": "Autonomous Adaptive Portfolio Hedge Agent",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/context": {
+      "get": {
+        "description": "A fully-populated :class:`HedgeContext` fixture (BRD §14).",
+        "operationId": "stub_context_context_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HedgeContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Context",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/debug/llm": {
+      "get": {
+        "description": "Echo the resolved LLM provider/model/base URL.\n\nStays up even when unrelated required settings (e.g. ``DATABASE_URL``) are\nmissing: the LLM fields all have defaults, so we fall back to a\nvalidation-free ``Settings`` that reads only the LLM env vars.",
+        "operationId": "llm_debug_debug_llm_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmDebugResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Llm Debug",
+        "tags": [
+          "debug"
+        ]
+      }
+    },
+    "/execution": {
+      "get": {
+        "description": "A FILLED :class:`ExecutionResult` fixture (BRD §23).",
+        "operationId": "stub_execution_execution_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Execution",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/execution/plan": {
+      "get": {
+        "description": "A ready-to-submit :class:`ExecutionPlan` fixture (BRD §21).",
+        "operationId": "stub_execution_plan_execution_plan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Execution Plan",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Return ``200`` with version and build info.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/monitoring": {
+      "get": {
+        "description": "A :class:`MonitoringState` fixture recommending reassessment (BRD §24).",
+        "operationId": "stub_monitoring_monitoring_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitoringState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Monitoring",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/risk": {
+      "get": {
+        "description": "An APPROVE :class:`RiskDecision` fixture (BRD §20).",
+        "operationId": "stub_risk_risk_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskDecision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Risk",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/strategy": {
+      "get": {
+        "description": "A :class:`StrategyDecision` fixture selecting the protective put (BRD §18).",
+        "operationId": "stub_strategy_strategy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyDecision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Strategy",
+        "tags": [
+          "stubs"
+        ]
+      }
+    },
+    "/strategy/hypothesis": {
+      "get": {
+        "description": "A single viable :class:`StrategyHypothesis` fixture (BRD §16).",
+        "operationId": "stub_strategy_hypothesis_strategy_hypothesis_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyHypothesis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stub Strategy Hypothesis",
+        "tags": [
+          "stubs"
+        ]
+      }
+    }
+  }
+}

@@ -51,7 +51,22 @@ from backend.models.strategy import (
     StrategyHypothesis,
 )
 
+# The top-level contracts exchanged between agents, in pipeline order. The stub
+# routers (P1-BE-15) and the OpenAPI artifact (P1-BE-16) iterate this so a new
+# contract is exposed and schema-checked the moment it is added here.
+CONTRACT_MODELS: tuple[type[Contract], ...] = (
+    HedgeContext,
+    StrategyHypothesis,
+    StrategyDecision,
+    RiskDecision,
+    ExecutionPlan,
+    ExecutionResult,
+    MonitoringState,
+)
+
 __all__ = [
+    # registry
+    "CONTRACT_MODELS",
     # base + shared
     "Contract",
     "OptionLeg",

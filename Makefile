@@ -1,10 +1,11 @@
-# Makefile — task P1-DB-2 wires the migration entrypoints.
-# The full target set (dev, test, smoke, cov, seed, db-reset, db-fresh,
-# openapi, demo-restore) lands with P1-OPS-1.
+# Makefile — task P1-DB-2 wires the migration entrypoints; P1-BE-16 adds
+# `openapi`. The full target set (dev, smoke, seed, db-reset, db-fresh,
+# demo-restore) lands with P1-OPS-1.
 
 ALEMBIC := python -m alembic -c backend/alembic.ini
+PYTEST := python -m pytest
 
-.PHONY: migrate migrate-down migrate-revision seed db-reset db-fresh
+.PHONY: migrate migrate-down migrate-revision seed db-reset db-fresh test cov openapi
 
 ## migrate: apply every migration up to head
 # Targets the Neon direct/unpooled DSN from .env, or $ALEMBIC_DATABASE_URL.
@@ -31,4 +32,16 @@ db-reset:
 
 ## db-fresh: run clean drop, migrate, seed lifecycle
 db-fresh: db-reset
+
+## test: run the backend test suite (smoke tests excluded by default)
+test:
+	$(PYTEST) -q
+
+## cov: run the test suite with a backend coverage report
+cov:
+	$(PYTEST) -q --cov=backend --cov-report=term-missing
+
+## openapi: regenerate the checked-in openapi.json artifact for the frontend
+openapi:
+	python -m scripts.export_openapi
 
