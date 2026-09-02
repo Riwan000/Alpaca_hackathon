@@ -301,3 +301,82 @@ def test_agent_runs(tmp_path: Path) -> None:
         f"`alembic downgrade 0003_positions` failed:\n{down.stdout}\n{down.stderr}"
     )
 
+
+def test_strategy_hypotheses(tmp_path: Path) -> None:
+    """Task P1-DB-6: strategy_hypotheses table schema and verdict enum constraints."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "strategy_hypotheses" in tables, f"Table 'strategy_hypotheses' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("strategy_hypotheses")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("strategy_hypotheses")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "strategy_type",
+            "verdict",
+            "legs",
+            "metrics",
+            "rejection_reason",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from strategy_hypotheses"
+
+        # Check nullable columns
+        assert col_by_name["legs"]["nullable"] is True
+        assert col_by_name["metrics"]["nullable"] is True
+        assert col_by_name["rejection_reason"]["nullable"] is True
+        assert col_by_name["verdict"]["nullable"] is False
+
+        metadata = MetaData()
+        table = Table("strategy_hypotheses", metadata, autoload_with=engine)
+
+        # 1. Valid insert
+        with engine.begin() as conn:
+            stmt = insert(table).values(
+                cycle_id="cycle_strat_001",
+                strategy_type="delta_neutral_collar",
+                verdict="ACCEPTED",
+                legs=[{"symbol": "SPY_240920P00500000", "ratio": 1}],
+                metrics={"delta": -0.45, "cost": 120.0},
+                rejection_reason=None,
+            )
+            res = conn.execute(stmt)
+            inserted_id = res.inserted_primary_key[0]
+            assert inserted_id is not None
+
+        # 2. Invalid verdict insert should fail
+        from sqlalchemy.exc import DBAPIError
+        with pytest.raises((IntegrityError, DBAPIError, Exception)):
+            with engine.begin() as conn:
+                conn.execute(
+                    insert(table).values(
+                        cycle_id="cycle_strat_002",
+                        strategy_type="delta_neutral_collar",
+                        verdict="INVALID_VERDICT_VALUE",
+                        legs=None,
+                        metrics=None,
+                        rejection_reason=None,
+                    )
+                )
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0004_agent_runs", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0004_agent_runs` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+

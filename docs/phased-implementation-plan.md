@@ -95,9 +95,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-5** — Migration: `agent_runs` (id, cycle_id, agent_name, inputs jsonb, outputs jsonb, error, started_at, finished_at, duration_ms).
   - Test: `tests/db/test_schema.py::test_agent_runs` — jsonb columns nullable, `duration_ms` integer.
   - [x] Confirm — `\d agent_runs` matches; a row with jsonb `inputs` inserts.
-- [ ] **P1-DB-6** — Migration: `strategy_hypotheses` (id, cycle_id, strategy_type, verdict, legs jsonb, metrics jsonb, rejection_reason).
+- [x] **P1-DB-6** — Migration: `strategy_hypotheses` (id, cycle_id, strategy_type, verdict, legs jsonb, metrics jsonb, rejection_reason).
   - Test: `tests/db/test_schema.py::test_strategy_hypotheses` — `verdict` constrained to the enum set.
-  - [ ] Confirm — `\d strategy_hypotheses`; a bad `verdict` value is rejected.
+  - [x] Confirm — `\d strategy_hypotheses`; a bad `verdict` value is rejected.
 - [ ] **P1-DB-7** — Migration: `strategy_decisions` (id, cycle_id, action, selected_hypothesis_id, rationale, alternatives jsonb, comparison jsonb).
   - Test: `tests/db/test_schema.py::test_strategy_decisions` — `selected_hypothesis_id` FK nullable (NO_TRADE).
   - [ ] Confirm — `\d strategy_decisions`; a NO_TRADE row with null selection inserts.
