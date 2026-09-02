@@ -187,21 +187,21 @@ depends on the contracts, config, and connectivity landed here.
   - [ ] Confirm — run it twice; no state bleeds between runs.
 
 ### Frontend
-- [ ] **P1-FE-1** — Scaffold Vite + React + TypeScript in `frontend/`.
+- [x] **P1-FE-1** — Scaffold Vite + React + TypeScript in `frontend/`.
   - Test: `src/App.test.tsx` — `<App/>` renders without crashing; `npm run build` succeeds.
-  - [ ] Confirm — `npm run dev` serves the app at localhost.
-- [ ] **P1-FE-2** — Install and configure router, data-fetching (React Query or equivalent), and the styling/theme library.
+  - [x] Confirm — `npm run dev` serves the app at localhost.
+- [x] **P1-FE-2** — Install and configure router, data-fetching (React Query or equivalent), and the styling/theme library.
   - Test: `src/providers.test.tsx` — the provider tree mounts a child component.
-  - [ ] Confirm — a component reading from React Query renders inside the tree.
-- [ ] **P1-FE-3** — Route shells: `/` Dashboard, `/configuration` Configuration, `/strategy/:id` StrategyDetails.
+  - [x] Confirm — a component reading from React Query renders inside the tree.
+- [x] **P1-FE-3** — Route shells: `/` Dashboard, `/configuration` Configuration, `/strategy/:id` StrategyDetails.
   - Test: `src/routes/routes.test.tsx` — each path renders its shell; unknown path → 404 view.
-  - [ ] Confirm — click through all three routes in the browser.
-- [ ] **P1-FE-4** — Base layout — nav, header, content frame, light/dark theme tokens.
+  - [x] Confirm — click through all three routes in the browser.
+- [x] **P1-FE-4** — Base layout — nav, header, content frame, light/dark theme tokens.
   - Test: `src/layout/Layout.test.tsx` — renders nav + content slot; theme toggle flips `data-theme`.
-  - [ ] Confirm — toggle light/dark in the UI; colors change.
-- [ ] **P1-FE-5** — API client module — base URL from env, typed fetch wrapper, normalized error shape.
+  - [x] Confirm — toggle light/dark in the UI; colors change.
+- [x] **P1-FE-5** — API client module — base URL from env, typed fetch wrapper, normalized error shape.
   - Test: `src/api/client.test.ts` (MSW) — 2xx parses; non-2xx → normalized error; network failure handled.
-  - [ ] Confirm — point at a dead port; UI shows the normalized error, not a raw stack.
+  - [x] Confirm — point at a dead port; UI shows the normalized error, not a raw stack.
 - [ ] **P1-FE-6** — Shared TS types mirroring the 7 contracts (generate from the OpenAPI artifact or hand-write).
   - Test: `src/api/types.test-d.ts` (`expect-type`/tsd) — generated types match the OpenAPI artifact; `tsc --noEmit` clean.
   - [ ] Confirm — regenerate types; `tsc --noEmit` exits 0 with no diff.

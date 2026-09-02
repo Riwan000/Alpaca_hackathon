@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #F3F7F5;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #E5EDE9;
+    --bg-subtle-hover: #DCE7E2;
+    --border-color: #CCD8D2;
+    --border-dark: #8CA397;
+    --text-main: #0E1713;
+    --text-muted: #52665C;
+    --brand-spruce: #1B4332;
+    --brand-gold: #A67C37;
+    --brand-teal: #0D9488;
+  }
+
+  [data-theme='dark'], .dark {
+    --bg-main: #0B120E;
+    --bg-card: #121C16;
+    --bg-subtle: #18261E;
+    --bg-subtle-hover: #1E3026;
+    --border-color: #23382C;
+    --border-dark: #355443;
+    --text-main: #E5EDE9;
+    --text-muted: #8CA397;
+    --brand-spruce: #2D6A4F;
+    --brand-gold: #C29B38;
+    --brand-teal: #14B8A6;
+  }
+
+  * {
+    border-radius: 0px !important;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, .font-serif-heading {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-mono-code, table, .metric-figure {
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+}
+
+/* Custom hairline accent utility */
+.border-t-gold-accent {
+  border-top: 3px solid var(--brand-gold);
+}
+
+.hero-spruce-border {
+  border: 2px solid var(--brand-spruce);
+}
