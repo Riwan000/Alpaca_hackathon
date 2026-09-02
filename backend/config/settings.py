@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     # migration tooling lands (P1-DB-2); callers fall back to the pooled DSN.
     database_url_unpooled: SecretStr | None = None
 
+    # Connection pooling settings (P1-DB-14) — tuned for Neon / PgBouncer
+    db_pool_size: int = Field(default=10, ge=1)
+    db_max_overflow: int = Field(default=5, ge=0)
+    db_pool_timeout: float = Field(default=30.0, ge=0.1)
+    db_pool_recycle: int = Field(default=1800, ge=1)
+    db_pool_pre_ping: bool = Field(default=True)
+
+
     @property
     def migration_dsn(self) -> str:
         """DSN for schema migrations — prefers the direct/unpooled endpoint."""

@@ -12,7 +12,18 @@ import os
 _PSYCOPG_DRIVER = "postgresql+psycopg"
 _OVERRIDE_ENV_VAR = "ALEMBIC_DATABASE_URL"
 
-__all__ = ["migration_url", "normalize_driver", "OVERRIDE_ENV_VAR"]
+__all__ = [
+    "migration_url",
+    "normalize_driver",
+    "OVERRIDE_ENV_VAR",
+    "get_async_engine",
+    "get_session_factory",
+    "get_db",
+    "close_async_engine",
+    "get_pool_status",
+    "create_engine_and_pool",
+]
+
 
 OVERRIDE_ENV_VAR = _OVERRIDE_ENV_VAR
 
@@ -53,3 +64,34 @@ def migration_url() -> str:
     from backend.config import get_settings
 
     return normalize_driver(get_settings().migration_dsn)
+
+
+def get_async_engine(*args, **kwargs):
+    from backend.db.session import get_async_engine as _get_engine
+    return _get_engine(*args, **kwargs)
+
+
+def get_session_factory(*args, **kwargs):
+    from backend.db.session import get_session_factory as _get_sf
+    return _get_sf(*args, **kwargs)
+
+
+def get_db():
+    from backend.db.session import get_db as _get_db
+    return _get_db()
+
+
+def close_async_engine(*args, **kwargs):
+    from backend.db.session import close_async_engine as _close_engine
+    return _close_engine(*args, **kwargs)
+
+
+def get_pool_status(*args, **kwargs):
+    from backend.db.session import get_pool_status as _get_status
+    return _get_status(*args, **kwargs)
+
+
+def create_engine_and_pool(*args, **kwargs):
+    from backend.db.session import create_engine_and_pool as _create_pool
+    return _create_pool(*args, **kwargs)
+
