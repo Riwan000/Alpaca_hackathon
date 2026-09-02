@@ -760,6 +760,79 @@ def test_fills(tmp_path: Path) -> None:
     )
 
 
+def test_monitoring_events(tmp_path: Path) -> None:
+    """Task P1-DB-11: monitoring_events table schema and trigger_type enum constraint."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "monitoring_events" in tables, f"Table 'monitoring_events' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("monitoring_events")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("monitoring_events")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "trigger_type",
+            "observed",
+            "threshold",
+            "fired_at",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from monitoring_events"
+
+        assert col_by_name["observed"]["nullable"] is True
+        assert col_by_name["threshold"]["nullable"] is True
+        assert col_by_name["trigger_type"]["nullable"] is False
+
+        metadata = MetaData()
+        events_table = Table("monitoring_events", metadata, autoload_with=engine)
+
+        # 1. Valid insert
+        with engine.begin() as conn:
+            res = conn.execute(
+                insert(events_table).values(
+                    cycle_id="cycle_mon_001",
+                    trigger_type="VOLATILITY_SPIKE",
+                    observed={"vix": 32.5, "delta_shift": -0.30},
+                    threshold=decimal.Decimal("30.0000"),
+                    fired_at=datetime.datetime.now(datetime.timezone.utc),
+                )
+            )
+            assert res.inserted_primary_key[0] is not None
+
+        # 2. Invalid trigger_type insert must fail
+        with pytest.raises((IntegrityError, Exception)):
+            with engine.begin() as conn:
+                conn.execute(
+                    insert(events_table).values(
+                        cycle_id="cycle_mon_002",
+                        trigger_type="UNKNOWN_TRIGGER_TYPE",
+                        observed=None,
+                        threshold=None,
+                        fired_at=datetime.datetime.now(datetime.timezone.utc),
+                    )
+                )
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0009_fills", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0009_fills` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
 
 
 

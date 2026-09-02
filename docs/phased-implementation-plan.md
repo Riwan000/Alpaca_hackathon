@@ -110,9 +110,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-10** — Migration: `fills` (id, order_id FK, leg_symbol, qty, price, filled_at, slippage).
   - Test: `tests/db/test_schema.py::test_fills` — `order_id` FK → `orders(id)` with cascade rule as designed.
   - [x] Confirm — `\d fills` shows the FK.
-- [ ] **P1-DB-11** — Migration: `monitoring_events` (id, cycle_id, trigger_type, observed jsonb, threshold, fired_at).
+- [x] **P1-DB-11** — Migration: `monitoring_events` (id, cycle_id, trigger_type, observed jsonb, threshold, fired_at).
   - Test: `tests/db/test_schema.py::test_monitoring_events` — `trigger_type` constrained to the enum set.
-  - [ ] Confirm — `\d monitoring_events` matches.
+  - [x] Confirm — `\d monitoring_events` matches.
 - [ ] **P1-DB-12** — Migration: `performance` (id, cycle_id, ts, portfolio_pnl, hedge_pnl, net_pnl, drawdown, hedge_cost, benchmark_pnl).
   - Test: `tests/db/test_schema.py::test_performance` — numeric columns present, `ts` indexed.
   - [ ] Confirm — `\d performance` matches.
