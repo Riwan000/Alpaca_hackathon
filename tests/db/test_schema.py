@@ -474,4 +474,72 @@ def test_strategy_decisions(tmp_path: Path) -> None:
     )
 
 
+def test_risk_checks(tmp_path: Path) -> None:
+    """Task P1-DB-8: risk_checks table schema and four JSONB columns."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "risk_checks" in tables, f"Table 'risk_checks' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("risk_checks")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("risk_checks")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "verdict",
+            "checks",
+            "violations",
+            "warnings",
+            "modifications",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from risk_checks"
+
+        # Check all four jsonb columns are present and nullable
+        for jsonb_col in ["checks", "violations", "warnings", "modifications"]:
+            assert col_by_name[jsonb_col]["nullable"] is True
+
+        metadata = MetaData()
+        risk_table = Table("risk_checks", metadata, autoload_with=engine)
+
+        with engine.begin() as conn:
+            res = conn.execute(
+                insert(risk_table).values(
+                    cycle_id="cycle_risk_001",
+                    verdict="MODIFIED",
+                    checks=[{"check": "max_drawdown", "passed": True}],
+                    violations=[],
+                    warnings=["delta exposure near upper boundary"],
+                    modifications={"qty": 5},
+                )
+            )
+            inserted_id = res.inserted_primary_key[0]
+            assert inserted_id is not None
+
+            select_stmt = select(risk_table).where(risk_table.c.id == inserted_id)
+            row = conn.execute(select_stmt).mappings().one()
+            assert row["verdict"] == "MODIFIED"
+            assert row["modifications"] == {"qty": 5}
+            assert row["warnings"] == ["delta exposure near upper boundary"]
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0006_strategy_decisions", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0006_strategy_decisions` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
 

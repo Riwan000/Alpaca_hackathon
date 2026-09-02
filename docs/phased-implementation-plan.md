@@ -101,9 +101,9 @@ depends on the contracts, config, and connectivity landed here.
 - [x] **P1-DB-7** — Migration: `strategy_decisions` (id, cycle_id, action, selected_hypothesis_id, rationale, alternatives jsonb, comparison jsonb).
   - Test: `tests/db/test_schema.py::test_strategy_decisions` — `selected_hypothesis_id` FK nullable (NO_TRADE).
   - [x] Confirm — `\d strategy_decisions`; a NO_TRADE row with null selection inserts.
-- [ ] **P1-DB-8** — Migration: `risk_checks` (id, cycle_id, verdict, checks jsonb, violations jsonb, warnings jsonb, modifications jsonb).
+- [x] **P1-DB-8** — Migration: `risk_checks` (id, cycle_id, verdict, checks jsonb, violations jsonb, warnings jsonb, modifications jsonb).
   - Test: `tests/db/test_schema.py::test_risk_checks` — all four jsonb columns present.
-  - [ ] Confirm — `\d risk_checks` matches.
+  - [x] Confirm — `\d risk_checks` matches.
 - [ ] **P1-DB-9** — Migration: `orders` (id, cycle_id, broker_order_id, class, legs jsonb, status, submitted_at).
   - Test: `tests/db/test_schema.py::test_orders` — `status` constrained; `broker_order_id` unique-nullable.
   - [ ] Confirm — `\d orders`; two rows with null `broker_order_id` coexist.
