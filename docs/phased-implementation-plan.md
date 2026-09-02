@@ -289,15 +289,15 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [x] **P2-BE-10** — `quant/greeks/implied_vol.py` — IV solver (bisection or Newton).
   - Test: `tests/quant/test_implied_vol.py` (P2-BE-20) — price→IV→price round-trips within tol; non-convergent input raises, not hangs.
   - [x] Confirm — `pytest tests/quant/test_implied_vol.py -q` green.
-- [ ] **P2-BE-11** — `quant/payoff/premium.py` — premium and hedge cost as % of portfolio.
+- [x] **P2-BE-11** — `quant/payoff/premium.py` — premium and hedge cost as % of portfolio.
   - Test: `tests/quant/test_premium.py` (P2-BE-21) — cost % = premium·contracts·multiplier / portfolio value.
-  - [ ] Confirm — `pytest tests/quant/test_premium.py -q` green.
-- [ ] **P2-BE-12** — `quant/payoff/curve.py` — payoff-curve points for a leg or combination.
+  - [x] Confirm — `pytest tests/quant/test_premium.py -q` green.
+- [x] **P2-BE-12** — `quant/payoff/curve.py` — payoff-curve points for a leg or combination.
   - Test: `tests/quant/test_payoff_curve.py` (P2-BE-21) — protective put: flat floor below strike, slope 1 above; monotonic.
-  - [ ] Confirm — `pytest tests/quant/test_payoff_curve.py -q` green.
-- [ ] **P2-BE-13** — `quant/payoff/max_loss.py` — max loss and breakevens for multi-leg structures.
+  - [x] Confirm — `pytest tests/quant/test_payoff_curve.py -q` green.
+- [x] **P2-BE-13** — `quant/payoff/max_loss.py` — max loss and breakevens for multi-leg structures.
   - Test: `tests/quant/test_max_loss.py` (P2-BE-21) — put spread max loss = net debit; collar bounded both sides; breakevens correct.
-  - [ ] Confirm — `pytest tests/quant/test_max_loss.py -q` green.
+  - [x] Confirm — `pytest tests/quant/test_max_loss.py -q` green.
 - [ ] **P2-BE-14** — `quant/sizing.py` — position sizing from budget and contract multiplier.
   - Test: `tests/quant/test_sizing.py` (P2-BE-22) — contracts = floor(budget / (premium·multiplier)); zero budget → 0; never negative.
   - [ ] Confirm — `pytest tests/quant/test_sizing.py -q` green.
