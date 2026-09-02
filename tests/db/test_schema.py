@@ -380,3 +380,98 @@ def test_strategy_hypotheses(tmp_path: Path) -> None:
     )
 
 
+def test_strategy_decisions(tmp_path: Path) -> None:
+    """Task P1-DB-7: strategy_decisions table schema, FK to strategy_hypotheses, and NO_TRADE."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "strategy_decisions" in tables, f"Table 'strategy_decisions' not found; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("strategy_decisions")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("strategy_decisions")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "action",
+            "selected_hypothesis_id",
+            "rationale",
+            "alternatives",
+            "comparison",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from strategy_decisions"
+
+        assert col_by_name["selected_hypothesis_id"]["nullable"] is True
+
+        fks = inspector.get_foreign_keys("strategy_decisions")
+        hypo_fk = next(
+            (fk for fk in fks if fk.get("constrained_columns") == ["selected_hypothesis_id"]), None
+        )
+        assert hypo_fk is not None, f"FK on selected_hypothesis_id not found in {fks}"
+        assert hypo_fk["referred_table"] == "strategy_hypotheses"
+        assert hypo_fk["referred_columns"] == ["id"]
+
+        metadata = MetaData()
+        decisions_table = Table("strategy_decisions", metadata, autoload_with=engine)
+        hypotheses_table = Table("strategy_hypotheses", metadata, autoload_with=engine)
+
+        # 1. NO_TRADE decision with null selected_hypothesis_id
+        with engine.begin() as conn:
+            res_notrade = conn.execute(
+                insert(decisions_table).values(
+                    cycle_id="cycle_dec_001",
+                    action="NO_TRADE",
+                    selected_hypothesis_id=None,
+                    rationale="Portfolio risk is within acceptable boundaries; hedging not needed.",
+                    alternatives=[],
+                    comparison={},
+                )
+            )
+            assert res_notrade.inserted_primary_key[0] is not None
+
+        # 2. HEDGE decision with linked hypothesis
+        with engine.begin() as conn:
+            hypo_res = conn.execute(
+                insert(hypotheses_table).values(
+                    cycle_id="cycle_dec_002",
+                    strategy_type="delta_neutral_collar",
+                    verdict="ACCEPTED",
+                    legs=[{"symbol": "SPY_P", "ratio": 1}],
+                    metrics={"cost": 100},
+                    rejection_reason=None,
+                )
+            )
+            hypo_id = hypo_res.inserted_primary_key[0]
+
+            res_hedge = conn.execute(
+                insert(decisions_table).values(
+                    cycle_id="cycle_dec_002",
+                    action="HEDGE",
+                    selected_hypothesis_id=hypo_id,
+                    rationale="High market beta detected; executing collar.",
+                    alternatives=[{"type": "tail_risk_put", "reason": "too expensive"}],
+                    comparison={"cost_efficiency": 0.85},
+                )
+            )
+            assert res_hedge.inserted_primary_key[0] is not None
+
+    finally:
+        engine.dispose()
+
+    down = _run_alembic("downgrade", "0005_strategy_hypotheses", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0005_strategy_hypotheses` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+
+
