@@ -17,6 +17,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from backend.quant.helpers import TRADING_DAYS_PER_YEAR
 from backend.quant.risk._stats import covariance, stdev
 
 __all__ = [
@@ -29,8 +30,8 @@ __all__ = [
     "portfolio_volatility",
 ]
 
-#: Trading days in a year — the conventional equity annualisation factor.
-DEFAULT_PERIODS_PER_YEAR: int = 252
+#: Backward-compatible alias — the canonical name lives in :mod:`backend.quant.helpers`.
+DEFAULT_PERIODS_PER_YEAR: int = TRADING_DAYS_PER_YEAR
 
 
 @dataclass(frozen=True)

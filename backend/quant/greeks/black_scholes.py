@@ -30,6 +30,8 @@ import math
 from dataclasses import dataclass
 from enum import Enum
 
+from backend.quant.helpers import CALENDAR_DAYS_PER_YEAR
+
 __all__ = [
     "OptionKind",
     "Greeks",
@@ -47,8 +49,8 @@ __all__ = [
 _SQRT_2 = math.sqrt(2.0)
 _INV_SQRT_2PI = 1.0 / math.sqrt(2.0 * math.pi)
 
-#: Calendar days per year, for converting annualised theta to a daily figure.
-DAYS_PER_YEAR: float = 365.0
+#: Backward-compatible alias — the canonical name lives in :mod:`backend.quant.helpers`.
+DAYS_PER_YEAR: float = CALENDAR_DAYS_PER_YEAR
 
 
 class OptionKind(str, Enum):
