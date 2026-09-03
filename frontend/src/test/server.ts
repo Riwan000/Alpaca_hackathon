@@ -617,6 +617,59 @@ export const handlers = [
   http.get('*/monitoring', () => {
     return HttpResponse.json(STUB_MONITORING_STATE);
   }),
+  http.get('*/monitoring/state', () => {
+    return HttpResponse.json(STUB_MONITORING_STATE);
+  }),
+  http.get('*/monitoring/events', () => {
+    return HttpResponse.json([
+      {
+        id: 1,
+        cycle_id: 'cyc-001',
+        trigger_type: 'VOLATILITY_SPIKE',
+        observed: { vix: 28.5 },
+        threshold: 22.0,
+        fired_at: '2026-09-04T01:00:00Z',
+      },
+    ]);
+  }),
+  http.get('*/pnl/current', () => {
+    return HttpResponse.json({
+      cycle_id: 'cyc-001',
+      portfolio_pnl: -30000.0,
+      hedge_pnl: 22000.0,
+      net_pnl: -8000.0,
+      drawdown: -0.008,
+      hedge_cost: 1700.0,
+      benchmark_pnl: -30000.0,
+      ts: '2026-09-04T01:30:00Z',
+    });
+  }),
+  http.get('*/pnl/series', () => {
+    return HttpResponse.json([
+      {
+        id: 1,
+        cycle_id: 'cyc-001',
+        portfolio_pnl: -30000.0,
+        hedge_pnl: 22000.0,
+        net_pnl: -8000.0,
+        drawdown: -0.008,
+        hedge_cost: 1700.0,
+        benchmark_pnl: -30000.0,
+        ts: '2026-09-04T01:30:00Z',
+      },
+      {
+        id: 2,
+        cycle_id: 'cyc-001',
+        portfolio_pnl: -10000.0,
+        hedge_pnl: 16000.0,
+        net_pnl: 6000.0,
+        drawdown: 0.0,
+        hedge_cost: 1700.0,
+        benchmark_pnl: -10000.0,
+        ts: '2026-09-04T02:00:00Z',
+      },
+    ]);
+  }),
   http.get('*/workflow/state', () => {
     return HttpResponse.json(STUB_WORKFLOW_STATE);
   }),

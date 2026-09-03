@@ -240,4 +240,43 @@ export function useHealth(
   });
 }
 
+export function usePnlCurrent(
+  options?: Partial<UseQueryOptions<any, Error>>
+) {
+  return useQuery<any, Error>({
+    queryKey: ['pnl', 'current'],
+    queryFn: () => apiClient.get<any>('/pnl/current'),
+    ...options,
+  });
+}
+
+export function usePnlSeries(
+  cycleId?: string,
+  options?: Partial<UseQueryOptions<any[], Error>>
+) {
+  return useQuery<any[], Error>({
+    queryKey: ['pnl', 'series', cycleId ?? 'all'],
+    queryFn: () =>
+      apiClient.get<any[]>(
+        cycleId ? `/pnl/series?cycle_id=${encodeURIComponent(cycleId)}` : '/pnl/series'
+      ),
+    ...options,
+  });
+}
+
+export function useMonitoringEvents(
+  cycleId?: string,
+  options?: Partial<UseQueryOptions<any[], Error>>
+) {
+  return useQuery<any[], Error>({
+    queryKey: ['monitoring', 'events', cycleId ?? 'all'],
+    queryFn: () =>
+      apiClient.get<any[]>(
+        cycleId ? `/monitoring/events?cycle_id=${encodeURIComponent(cycleId)}` : '/monitoring/events'
+      ),
+    ...options,
+  });
+}
+
+
 

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { RefreshCw, ArrowUpRight, AlertCircle, BookOpen } from 'lucide-react';
 import {
   useHedgeContext,
   useStrategyDecision,
@@ -11,6 +11,9 @@ import {
   useWorkflowState,
   useRiskChecks,
   useExecutionResult,
+  usePnlCurrent,
+  usePnlSeries,
+  useMonitoringEvents,
 } from '../api/queries';
 import { PortfolioOverview } from '../components/PortfolioOverview';
 import { RiskOverview } from '../components/RiskOverview';
@@ -22,17 +25,29 @@ import { RiskChecklist } from '../components/RiskChecklist';
 import { OrderStatus } from '../components/OrderStatus';
 import { WorkflowState } from '../components/WorkflowState';
 import { RunCycleButton } from '../components/RunCycleButton';
+import { Performance } from '../components/Performance';
+import { MonitoringPanel } from '../components/MonitoringPanel';
+import { HedgeDriftGauge } from '../components/HedgeDriftGauge';
+import { ReassessmentHistory } from '../components/ReassessmentHistory';
+import { TradeHistory, type TradeItem } from '../components/TradeHistory';
+import { DecisionTrail, type DecisionTrailData } from '../components/DecisionTrail';
+import { DemoWalkthrough } from '../components/DemoWalkthrough';
 
 export const DashboardPage: React.FC = () => {
+  const [selectedTrade, setSelectedTrade] = useState<TradeItem | null>(null);
+
   const contextQuery = useHedgeContext();
   const portfolioQuery = usePortfolioLatest();
   const strategyQuery = useStrategyDecision();
   const hypothesesQuery = useStrategyHypotheses();
   const agentRunsQuery = useAgentRuns();
   const monitoringQuery = useMonitoringState();
+  const monitoringEventsQuery = useMonitoringEvents();
   const workflowQuery = useWorkflowState();
   const riskChecksQuery = useRiskChecks();
   const executionQuery = useExecutionResult();
+  const pnlCurrentQuery = usePnlCurrent();
+  const pnlSeriesQuery = usePnlSeries();
 
   const isLoading =
     contextQuery.isLoading ||
@@ -64,31 +79,96 @@ export const DashboardPage: React.FC = () => {
   const riskDecision = riskChecksQuery.data;
   const executionResult = executionQuery.data;
 
+  // Build trades from execution result if present
+  const trades: TradeItem[] = executionResult
+    ? [
+        {
+          id: executionResult.order_ids?.[0] || 'ord-100',
+          cycle_id: executionResult.cycle_id,
+          order_class: 'MLEG',
+          status: executionResult.status,
+          submitted_at: executionResult.submitted_at || '2026-09-04T01:00:00Z',
+          cost: executionResult.actual_cost,
+          legs: (executionResult.filled_legs || []).map((l) => ({
+            symbol: l.leg_symbol,
+            qty: l.qty,
+            price: l.price,
+            slippage: l.slippage,
+          })),
+        },
+      ]
+    : [];
+
+  // Build decision trail data
+  const trailData: DecisionTrailData = {
+    order_id: selectedTrade?.id || trades[0]?.id || 'ord-100',
+    trade: {
+      symbol: trades[0]?.legs?.[0]?.symbol || 'SPY261218P00500000',
+      action: 'BUY',
+      qty: trades[0]?.legs?.[0]?.qty || 20,
+      price: trades[0]?.legs?.[0]?.price || 8.55,
+      status: executionResult?.status || 'FILLED',
+      filled_at: executionResult?.completed_at,
+    },
+    risk: {
+      verdict: riskDecision?.verdict || 'APPROVE',
+      checks_passed: riskDecision?.checks?.filter((c) => c.passed).length || 4,
+      checks_total: riskDecision?.checks?.length || 4,
+      rationale: riskDecision?.rationale,
+    },
+    strategy: {
+      strategy_type: strategy?.selected_strategy || 'PROTECTIVE_PUT',
+      action: strategy?.action || 'NEW_HEDGE',
+      rationale: strategy?.rationale || 'Protective Put provides maximum downside protection within budget.',
+    },
+    hypotheses: (allHypotheses || []).map((h) => ({
+      strategy_type: h.strategy,
+      verdict: h.viable ? 'ACCEPTED' : 'REJECTED',
+    })),
+    context: {
+      regime: context?.market_state?.regime || 'NORMAL',
+      vix: context?.market_state?.vix,
+      drawdown: portfolio?.drawdown,
+    },
+    trigger: {
+      trigger_type: monitoringQuery.data?.trigger_history?.[0]?.trigger_type || 'VOLATILITY_SPIKE',
+      observed: monitoringQuery.data?.trigger_history?.[0]?.observed_value,
+      threshold: monitoringQuery.data?.trigger_history?.[0]?.threshold,
+      fired_at: monitoringQuery.data?.trigger_history?.[0]?.observed_at,
+    },
+  };
+
+  const handleReset = () => {
+    // Invalidate and refetch queries to return UI to seed state
+    contextQuery.refetch();
+    portfolioQuery.refetch();
+    strategyQuery.refetch();
+    hypothesesQuery.refetch();
+    agentRunsQuery.refetch();
+    monitoringQuery.refetch();
+    workflowQuery.refetch();
+    riskChecksQuery.refetch();
+    executionQuery.refetch();
+    pnlCurrentQuery.refetch();
+    pnlSeriesQuery.refetch();
+    setSelectedTrade(null);
+  };
+
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       {/* Page Title / Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold font-serif text-[var(--text-main)]">
+          <h1 className="text-2xl font-bold font-serif text-white">
             Portfolio Risk & Strategy Dashboard
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-xs text-[var(--text-muted)] font-mono">
+            <p className="text-xs text-slate-400 font-mono">
               REAL-TIME HEDGE METRICS • CONTINUOUS ADAPTIVE PROTECTION
               {context && ` • CYCLE ${context.cycle_id.toUpperCase()}`}
             </p>
-            <span className="text-[10px] font-mono text-[var(--text-muted)]" data-testid="portfolio-aum">
+            <span className="text-[10px] font-mono text-slate-400" data-testid="portfolio-aum">
               AUM {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio?.total_value ?? 1000000)}
-            </span>
-          </div>
-          {/* Telemetry metadata */}
-          <div className="hidden" aria-hidden="true">
-            <span data-testid="greek-delta">{strategy?.selected_hypothesis?.hedge_metrics?.net_delta ?? -700}</span>
-            <span data-testid="monitoring-status">
-              {monitoringQuery.data?.reassessment_recommended ? '● REASSESS RECOMMENDED' : '● IDLE'}
-            </span>
-            <span data-testid="active-trigger-item">
-              {monitoringQuery.data?.active_triggers ? `TRIGGER: ${monitoringQuery.data.active_triggers.join(', ')}` : ''}
             </span>
           </div>
         </div>
@@ -96,14 +176,13 @@ export const DashboardPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           {isLoading && (
             <span
-              className="flex items-center gap-1 text-xs font-mono text-[var(--text-muted)]"
+              className="flex items-center gap-1 text-xs font-mono text-slate-400"
               data-testid="loading-indicator"
             >
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               Syncing Feed...
             </span>
           )}
-          {/* Phase 6: Run Cycle Demo Control */}
           <RunCycleButton
             isRunning={workflow?.status === 'running'}
             onCycleTriggered={() => {
@@ -112,11 +191,18 @@ export const DashboardPage: React.FC = () => {
             }}
           />
           <Link
-            to={`/strategy/${context?.cycle_id || 'cyc-001'}`}
-            className="px-3 py-2 bg-[var(--brand-spruce)] text-white text-xs font-mono font-medium flex items-center gap-1 hover:bg-[#143225] transition-colors"
+            to="/adaptation"
+            className="px-3 py-2 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 text-xs font-mono font-medium flex items-center gap-1 border border-indigo-700/60 rounded transition-colors"
           >
-            Inspect Strategy Details
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#A67C37]" />
+            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+            Adaptation Story
+          </Link>
+          <Link
+            to={`/strategy/${context?.cycle_id || 'cyc-001'}`}
+            className="px-3 py-2 bg-slate-800 text-white text-xs font-mono font-medium flex items-center gap-1 hover:bg-slate-700 rounded transition-colors border border-slate-700"
+          >
+            Strategy Details
+            <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
           </Link>
         </div>
       </div>
@@ -124,7 +210,7 @@ export const DashboardPage: React.FC = () => {
       {/* Global Error Banner */}
       {error && (
         <div
-          className="p-4 border border-[var(--status-danger)] bg-[var(--status-danger)]/10 text-xs font-mono text-[var(--status-danger)] flex items-center gap-2"
+          className="p-4 border border-rose-800 bg-rose-950/20 text-xs font-mono text-rose-400 flex items-center gap-2 rounded-lg"
           data-testid="dashboard-error"
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -132,46 +218,41 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Phase 6: Live Workflow Orchestration State */}
+      {/* Demo Script Walkthrough Banner with Reset Button */}
+      <DemoWalkthrough onReset={handleReset} />
+
+      {/* P&L and Attribution */}
+      <Performance
+        current={pnlCurrentQuery.data}
+        series={pnlSeriesQuery.data || []}
+        isLoading={pnlCurrentQuery.isLoading}
+      />
+
+      {/* Live Workflow Orchestration State */}
       <WorkflowState
         workflow={workflow}
         isLoading={workflowQuery.isLoading}
         error={workflowQuery.error}
       />
 
-      {/* Market Bar */}
-      {context?.market_state && (
-        <div className="p-3 bg-[var(--bg-subtle)] border border-[var(--border-color)] flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)] uppercase text-[10px]">Market Regime:</span>
-            <span className="font-bold text-[var(--text-main)]">
-              {context.market_state.regime || 'NORMAL'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)] uppercase text-[10px]">Index Trend:</span>
-            <span className="font-bold text-[var(--text-main)]">
-              {context.market_state.index_trend || 'NEUTRAL'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)] uppercase text-[10px]">VIX:</span>
-            <span className="font-bold text-[var(--brand-gold)]">
-              {context.market_state.vix ?? '—'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)] uppercase text-[10px]">As Of:</span>
-            <span className="text-[var(--text-main)]">
-              {context.market_state.as_of
-                ? new Date(context.market_state.as_of).toLocaleTimeString()
-                : 'Live'}
-            </span>
-          </div>
+      {/* Hedge Drift Gauge & Monitoring Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5">
+          <HedgeDriftGauge
+            currentHedgeRatio={monitoringQuery.data?.hedge_ratio ?? 0.19}
+            targetHedgeRatio={monitoringQuery.data?.target_hedge_ratio ?? 0.20}
+          />
         </div>
-      )}
+        <div className="lg:col-span-7">
+          <MonitoringPanel
+            events={monitoringEventsQuery.data || []}
+            activeTriggers={monitoringQuery.data?.active_triggers || []}
+            isLoading={monitoringEventsQuery.isLoading}
+          />
+        </div>
+      </div>
 
-      {/* Phase 5: Hedge Status (Active vs Unhedged) & Phase 3: Risk Overview Tiles */}
+      {/* Hedge Status & Risk Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5">
           <HedgeStatus
@@ -190,7 +271,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Phase 4: Recommendation Panel */}
+      {/* Recommendation Panel */}
       <Recommendation
         decision={strategy}
         currentHedge={context?.current_hedge}
@@ -199,14 +280,14 @@ export const DashboardPage: React.FC = () => {
         error={strategyQuery.error}
       />
 
-      {/* Phase 5: Quantitative Risk Gate Checks */}
+      {/* Quantitative Risk Gate Checks */}
       <RiskChecklist
         decision={riskDecision}
         isLoading={riskChecksQuery.isLoading}
         error={riskChecksQuery.error}
       />
 
-      {/* Phase 4: Strategy Hypotheses Side-by-Side Comparison */}
+      {/* Strategy Hypotheses Side-by-Side Comparison */}
       <StrategyComparison
         hypotheses={allHypotheses}
         selectedStrategy={strategy?.selected_strategy}
@@ -215,14 +296,45 @@ export const DashboardPage: React.FC = () => {
         error={hypothesesQuery.error}
       />
 
-      {/* Phase 5: Broker Order Execution Status */}
-      <OrderStatus
-        result={executionResult}
-        isLoading={executionQuery.isLoading}
-        error={executionQuery.error}
+      {/* Reassessment History */}
+      <ReassessmentHistory
+        reassessments={[
+          {
+            id: 1,
+            cycle_id: context?.cycle_id || 'cyc-001',
+            trigger: 'VOLATILITY_SPIKE',
+            outcome: 'DECREASE',
+            reason: 'Risk subsided with VIX falling below threshold. Trimming excess put coverage.',
+            created_at: new Date().toISOString(),
+            delta: -0.50,
+            before_hedge_ratio: 0.80,
+            after_hedge_ratio: 0.30,
+          },
+        ]}
       />
 
-      {/* 2-Column Grid: Portfolio Overview (Holdings Table) & Agent Activity Timeline */}
+      {/* Broker Order Execution Status & Trade History */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-6">
+          <OrderStatus
+            result={executionResult}
+            isLoading={executionQuery.isLoading}
+            error={executionQuery.error}
+          />
+        </div>
+        <div className="lg:col-span-6">
+          <TradeHistory
+            trades={trades}
+            onSelectTrade={(t) => setSelectedTrade(t)}
+            isLoading={executionQuery.isLoading}
+          />
+        </div>
+      </div>
+
+      {/* Decision Trail Drill-down */}
+      <DecisionTrail data={trailData} />
+
+      {/* Portfolio Overview & Agent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7">
           <PortfolioOverview

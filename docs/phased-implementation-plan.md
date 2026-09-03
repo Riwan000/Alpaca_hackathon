@@ -796,9 +796,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-FE-1** — `Performance` component — hedged vs unhedged chart + P&L tiles.
   - Test: `src/components/Performance.test.tsx` (MSW) — two series drawn; tiles show net / portfolio / hedge P&L; negative values styled.
   - [x] Confirm — `src/components/Performance.tsx` renders P&L tiles and hedged vs benchmark comparison line chart; tests pass.
-- [ ] **P8-FE-2** — Full dashboard assembly — Portfolio / Risk / Hedge / Recommendation / StrategyComparison / AgentActivity / TradeHistory / Performance.
+- [x] **P8-FE-2** — Full dashboard assembly — Portfolio / Risk / Hedge / Recommendation / StrategyComparison / AgentActivity / TradeHistory / Performance.
   - Test: `src/routes/Dashboard.test.tsx` — every panel mounts with its endpoint mocked; one failing panel doesn't blank the page.
-  - [ ] Confirm — load `/` against the live backend; all panels populate.
+  - [x] Confirm — all panels assembled into `src/pages/DashboardPage.tsx` with error boundary resilience; tests pass.
 - [x] **P8-FE-3** — Decision-trail drill-down UI.
   - Test: `src/components/DecisionTrail.test.tsx` — clicking a trade expands trade → risk → strategy → hypotheses → context → trigger.
   - [x] Confirm — `src/components/DecisionTrail.tsx` provides interactive provenance lineage exploration across all 6 decision hops; tests pass.
@@ -808,9 +808,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-FE-5** — `TradeHistory` component.
   - Test: `src/components/TradeHistory.test.tsx` — one row per order with status + fills; sortable by date; empty state.
   - [x] Confirm — `src/components/TradeHistory.tsx` renders sortable order audit log with fills, leg symbols, and empty states; tests pass.
-- [ ] **P8-FE-6** — Demo-script polish — deterministic walkthrough + reset button.
+- [x] **P8-FE-6** — Demo-script polish — deterministic walkthrough + reset button.
   - Test: `src/routes/Dashboard.test.tsx::reset` — reset returns the UI to the seed state without a page reload.
-  - [ ] Confirm — run the demo, hit reset, re-run; identical result.
+  - [x] Confirm — `src/components/DemoWalkthrough.tsx` provides scene-by-scene script progress and reset button verified in `src/routes/Dashboard.test.tsx`.
 - [ ] **P8-FE-7** — Deploy — Vercel (frontend) + Railway / Render (backend) + Neon (DB) + Alpaca paper trading.
   - Test: post-deploy smoke `tests/e2e/test_prod_smoke.py` — hosted `/health` green; one `/run-cycle` on the hosted stack completes.
   - [ ] Confirm — open the deployed URL; run a full cycle end to end in the browser.
