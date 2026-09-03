@@ -742,9 +742,9 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-FE-3** — Reassessment history list (trigger → outcome → hedge change).
   - Test: `src/components/ReassessmentHistory.test.tsx` — one row per reassessment linking trigger, outcome, and the resulting `hedge_changes` delta.
   - [x] Confirm — `src/components/ReassessmentHistory.tsx` renders trigger, outcome, ratio changes, and reasoning for reassessments; vitest passes.
-- [ ] **P7-FE-4** — "Market stabilizes → reduce hedge" narrative view (BRD §37 Scene 8).
+- [x] **P7-FE-4** — "Market stabilizes → reduce hedge" narrative view (BRD §37 Scene 8).
   - Test: `src/routes/AdaptationStory.test.tsx` — renders the timeline of hedge-on → hedge-reduced with the triggering events.
-  - [ ] Confirm — the demo view tells the reduction story from real data.
+  - [x] Confirm — `src/routes/AdaptationStory.tsx` provides interactive narrative timeline for BRD §37 Scene 8; vitest suite passes.
 
 **Phase 7 acceptance**
 - [ ] Level 1 never trades; only Level 2 (via the risk gate) does.
