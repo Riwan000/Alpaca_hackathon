@@ -448,9 +448,9 @@ No execution.
   - [x] Confirm — `backend/api/strategy_readback.py` (wired in `create_app`, shares `readback.get_readback_engine`): `/strategy/hypotheses` filters by `cycle_id` (else all) in insertion order with the REJECTED rows and their `rejection_reason` included; `/strategy/decision` returns that cycle's decision (else the latest), `404` when none. `test_returned_counts_match_the_db` reconciles the endpoint counts against `StrategyHypothesisRepository.count` / `list_for_cycle`. `openapi.json` regenerated. Live `curl` rides on P4-BE-11.
 
 ### Backend
-- [ ] **P4-BE-1** — `StrategyHypothesis` interface + base class (VIABLE / NOT_VIABLE, may reject its own family).
+- [x] **P4-BE-1** — `StrategyHypothesis` interface + base class (VIABLE / NOT_VIABLE, may reject its own family).
   - Test: `tests/agents/test_hypothesis_base.py` — subclass must emit a schema-valid hypothesis; self-rejection path returns NOT_VIABLE with a reason.
-  - [ ] Confirm — a throwaway subclass instance validates.
+  - [x] Confirm — `backend/agents/strategies/base.py::StrategyAgent`: a concrete agent sets `strategy` (a `StrategyType`) and implements `build(context) -> StrategyHypothesis`; callers use `propose(context)`, which returns a viable hypothesis unchanged, converts a `SelfRejection` raised anywhere in `build` into a schema-valid `viable=False` hypothesis carrying `rejection_reason` (BRD §16), and guards the family / `cycle_id` invariants. Helpers `viable(...)` / `not_viable(reason, ...)` wire in `cycle_id` + `strategy` so P4-BE-2..5 stay quant-focused. `__init_subclass__` rejects a concrete agent that forgets its family. `test_hypothesis_base.py` — throwaway `_ViablePut` round-trips through `StrategyHypothesis.model_validate`; `_RejectsViaException` / `_RejectsViaHelper` return NOT_VIABLE with the reason; mislabelled-family, wrong-cycle and non-hypothesis returns all raise.
 - [ ] **P4-BE-2** — Protective Put agent.
   - Test: `tests/agents/test_protective_put.py` (stubbed LLM + real `quant/`) — picks a strike/expiry within budget; cost, floor, Greeks come from `quant/`; over-budget context → NOT_VIABLE.
   - [ ] Confirm — run on the seed context; payoff floor and cost match a hand check.
