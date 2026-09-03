@@ -165,6 +165,24 @@ class AgentRunRepository:
             )
         return [rec for rec in (self._to_record(row) for row in rows) if rec is not None]
 
+    def list_all(self) -> list[AgentRunRecord]:
+        """Every run across all cycles in start order (``id`` breaks ties).
+
+        The unfiltered form of :meth:`list_for_cycle`, backing
+        ``GET /agent-runs`` with no ``cycle_id`` (task P3-DB-4).
+        """
+        with self._engine.connect() as conn:
+            rows = (
+                conn.execute(
+                    select(self._table).order_by(
+                        self._table.c.started_at.asc(), self._table.c.id.asc()
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return [rec for rec in (self._to_record(row) for row in rows) if rec is not None]
+
     def count(self) -> int:
         """Number of rows currently in ``agent_runs``."""
         with self._engine.connect() as conn:

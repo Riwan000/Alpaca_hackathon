@@ -358,15 +358,15 @@ Turn a live Alpaca portfolio into a standardized `HedgeContext`.
 - [x] **P3-DB-2** — `portfolio_snapshots` + `positions` repository: write on each analysis pass.
   - Test: `tests/db/test_snapshot_repo.py` — save snapshot + N positions in one transaction; partial failure rolls back both.
   - [x] Confirm — `PortfolioSnapshotRepository.save_with_positions` in `backend/db/repository.py`; a bad position rolls the snapshot back with it (test `test_partial_failure_rolls_back_snapshot_and_positions`). Live `/analyze` re-check rides on the Phase 3 analysis pass (P3-BE-*).
-- [ ] **P3-DB-3** — Persist computed risk metrics alongside the snapshot.
+- [x] **P3-DB-3** — Persist computed risk metrics alongside the snapshot.
   - Test: `tests/db/test_snapshot_repo.py::test_metrics_saved` — volatility/beta/drawdown columns populated, not null.
-  - [ ] Confirm — `select volatility, beta, drawdown from portfolio_snapshots order by ts desc limit 1` returns numbers.
-- [ ] **P3-DB-4** — Read-back endpoints: `GET /portfolio/latest`, `GET /agent-runs?cycle_id=`.
+  - [x] Confirm — migration `0014_snapshot_risk_metrics` adds nullable `volatility` / `beta` / `drawdown` to `portfolio_snapshots`; `PortfolioSnapshotRecord` + repo carry them. `test_metrics_saved` asserts the confirm query `select volatility, beta, drawdown from portfolio_snapshots order by ts desc limit 1` returns numbers.
+- [x] **P3-DB-4** — Read-back endpoints: `GET /portfolio/latest`, `GET /agent-runs?cycle_id=`.
   - Test: `tests/api/test_readback.py` — `/portfolio/latest` returns the newest snapshot; `/agent-runs` filters by `cycle_id` and orders by `started_at`.
-  - [ ] Confirm — `curl` both; latest snapshot matches the DB, runs are in execution order.
-- [ ] **P3-DB-5** — Index `agent_runs(cycle_id, started_at)` for timeline reads.
+  - [x] Confirm — `backend/api/readback.py` (wired in `create_app`); `/portfolio/latest` returns the newest snapshot + metrics + positions, `/agent-runs` filters by `cycle_id` (else all) in `started_at` order. `openapi.json` regenerated. Live `curl` rides on the Phase 3 analysis pass (P3-BE-*).
+- [x] **P3-DB-5** — Index `agent_runs(cycle_id, started_at)` for timeline reads.
   - Test: `tests/db/test_schema.py::test_agent_runs_timeline_index` — composite index present.
-  - [ ] Confirm — `EXPLAIN` on the timeline query uses the index.
+  - [x] Confirm — migration `0013_agent_runs_timeline_index` adds `ix_agent_runs_cycle_id_started_at`; `EXPLAIN QUERY PLAN` on the timeline query reports `SEARCH agent_runs USING INDEX ix_agent_runs_cycle_id_started_at` with no separate sort.
 
 ### Backend
 - [ ] **P3-BE-1** — `integrations/market_data/` client — spot prices, historical bars, index data.

@@ -9,9 +9,11 @@ Phase 3 (P3-DB-2) adds the write path each analysis pass actually uses:
 row **and its N position rows in a single transaction** — a bad position rolls
 the snapshot back with it, so a half-written pass never lands.
 
-P3-DB-3 will grow ``portfolio_snapshots`` with the computed risk-metric columns;
-see ``docs/adr/0001-risk-metrics-storage.md`` for why those metrics land on
-``portfolio_snapshots`` rather than a dedicated table.
+P3-DB-3 grows ``portfolio_snapshots`` — and this record — with the computed
+risk-metric columns (``volatility`` / ``beta`` / ``drawdown``); see
+``docs/adr/0001-risk-metrics-storage.md`` for why those metrics land on
+``portfolio_snapshots`` rather than a dedicated table. They are nullable: an
+early cycle may lack the history to compute them.
 """
 
 from __future__ import annotations
@@ -36,6 +38,10 @@ class PortfolioSnapshotRecord:
     ``ts`` is excluded from equality: the column carries a ``server_default`` of
     ``now()`` and SQLite drops timezone info on read, so a round-trip check
     should assert metric identity, not the timestamp.
+
+    ``volatility`` / ``beta`` / ``drawdown`` are the computed portfolio-level risk
+    metrics (task P3-DB-3). They are optional — ``None`` when the cycle could not
+    compute them — and are stored on this row rather than a separate table.
     """
 
     cycle_id: str
@@ -43,6 +49,9 @@ class PortfolioSnapshotRecord:
     cash: decimal.Decimal
     equity: decimal.Decimal
     buying_power: decimal.Decimal
+    volatility: decimal.Decimal | None = None
+    beta: decimal.Decimal | None = None
+    drawdown: decimal.Decimal | None = None
     ts: _dt.datetime = dataclasses.field(
         default_factory=lambda: _dt.datetime.now(_dt.timezone.utc), compare=False
     )
@@ -98,6 +107,9 @@ class PortfolioSnapshotRepository:
                     cash=record.cash,
                     equity=record.equity,
                     buying_power=record.buying_power,
+                    volatility=record.volatility,
+                    beta=record.beta,
+                    drawdown=record.drawdown,
                 )
             )
             new_id = int(result.inserted_primary_key[0])
@@ -129,6 +141,9 @@ class PortfolioSnapshotRepository:
                         cash=snapshot.cash,
                         equity=snapshot.equity,
                         buying_power=snapshot.buying_power,
+                        volatility=snapshot.volatility,
+                        beta=snapshot.beta,
+                        drawdown=snapshot.drawdown,
                     )
                 ).inserted_primary_key[0]
             )
@@ -233,6 +248,9 @@ class PortfolioSnapshotRepository:
             cash=row["cash"],
             equity=row["equity"],
             buying_power=row["buying_power"],
+            volatility=row["volatility"],
+            beta=row["beta"],
+            drawdown=row["drawdown"],
             ts=row["ts"],
             id=int(row["id"]),
         )

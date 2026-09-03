@@ -1065,6 +1065,50 @@ def test_constraints_and_indexes(tmp_path: Path) -> None:
     )
 
 
+def test_agent_runs_timeline_index(tmp_path: Path) -> None:
+    """Task P3-DB-5: a composite index on agent_runs(cycle_id, started_at)."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        indexes = inspect(engine).get_indexes("agent_runs")
+        composite = [
+            idx for idx in indexes
+            if list(idx.get("column_names") or []) == ["cycle_id", "started_at"]
+        ]
+        assert composite, (
+            "expected a composite index on agent_runs(cycle_id, started_at); "
+            f"found {indexes}"
+        )
+    finally:
+        engine.dispose()
+
+    # The index belongs to 0013 — dropping it must leave a clean 0012 schema,
+    # and re-upgrading must restore it.
+    down = _run_alembic("downgrade", "0012_constraints_and_indexes", db_url=db_url)
+    assert down.returncode == 0, (
+        f"`alembic downgrade 0012_constraints_and_indexes` failed:\n{down.stdout}\n{down.stderr}"
+    )
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        after_down = inspect(engine).get_indexes("agent_runs")
+        assert not [
+            idx for idx in after_down
+            if list(idx.get("column_names") or []) == ["cycle_id", "started_at"]
+        ], f"composite index survived the downgrade: {after_down}"
+    finally:
+        engine.dispose()
+
+    re_up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert re_up.returncode == 0, (
+        f"`alembic upgrade head` failed:\n{re_up.stdout}\n{re_up.stderr}"
+    )
+
+
 
 
 

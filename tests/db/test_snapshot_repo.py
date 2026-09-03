@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
 from backend.db import OVERRIDE_ENV_VAR, normalize_driver
@@ -74,6 +74,20 @@ def _positions(count: int) -> list[PositionRecord]:
         )
         for i in range(count)
     ]
+
+
+def _snapshot_with_metrics(cycle_id: str) -> PortfolioSnapshotRecord:
+    return PortfolioSnapshotRecord(
+        cycle_id=cycle_id,
+        total_value=decimal.Decimal("100000.0000"),
+        cash=decimal.Decimal("25000.0000"),
+        equity=decimal.Decimal("75000.0000"),
+        buying_power=decimal.Decimal("50000.0000"),
+        volatility=decimal.Decimal("0.1850"),
+        beta=decimal.Decimal("1.0300"),
+        drawdown=decimal.Decimal("-0.0720"),
+        ts=datetime.datetime(2026, 9, 3, 16, 0, tzinfo=datetime.timezone.utc),
+    )
 
 
 @pytest.fixture
@@ -155,3 +169,41 @@ def test_second_pass_adds_a_distinct_snapshot(
     assert repo.count_positions() == 5
     assert len(repo.positions_for(first.snapshot.id)) == 3
     assert len(repo.positions_for(second.snapshot.id)) == 2
+
+
+def test_metrics_saved(repo: PortfolioSnapshotRepository) -> None:
+    """P3-DB-3: volatility / beta / drawdown persist alongside the snapshot."""
+    metrics = {
+        "volatility": decimal.Decimal("0.1850"),
+        "beta": decimal.Decimal("1.0300"),
+        "drawdown": decimal.Decimal("-0.0720"),
+    }
+    saved = repo.save_with_positions(
+        _snapshot_with_metrics("cycle_p3_db_3"), _positions(2)
+    )
+    assert saved.snapshot.id is not None
+    assert saved.snapshot.volatility == metrics["volatility"]
+    assert saved.snapshot.beta == metrics["beta"]
+    assert saved.snapshot.drawdown == metrics["drawdown"]
+
+    # Read back through the repo — the columns round-trip, not null.
+    round_tripped = repo.get(saved.snapshot.id)
+    assert round_tripped is not None
+    assert round_tripped.volatility == metrics["volatility"]
+    assert round_tripped.beta == metrics["beta"]
+    assert round_tripped.drawdown == metrics["drawdown"]
+
+    # The P3-DB-3 confirm query returns numbers, not NULLs.
+    with repo._engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "select volatility, beta, drawdown from portfolio_snapshots "
+                "order by ts desc limit 1"
+            )
+        ).one()
+    assert all(value is not None for value in row)
+    assert (decimal.Decimal(str(row[0])), decimal.Decimal(str(row[1])), decimal.Decimal(str(row[2]))) == (
+        metrics["volatility"],
+        metrics["beta"],
+        metrics["drawdown"],
+    )
