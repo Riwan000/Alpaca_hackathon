@@ -739,9 +739,9 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-FE-2** — Current-vs-target hedge-drift gauge.
   - Test: `src/components/HedgeDriftGauge.test.tsx` — needle at current, marker at target; inside deadband styled calm, outside styled alert.
   - [x] Confirm — `src/components/HedgeDriftGauge.tsx` renders current vs target gauge with deadband corridor and alert/calm styling; tests pass.
-- [ ] **P7-FE-3** — Reassessment history list (trigger → outcome → hedge change).
+- [x] **P7-FE-3** — Reassessment history list (trigger → outcome → hedge change).
   - Test: `src/components/ReassessmentHistory.test.tsx` — one row per reassessment linking trigger, outcome, and the resulting `hedge_changes` delta.
-  - [ ] Confirm — a `DECREASE` shows trigger, outcome, and the ratio drop.
+  - [x] Confirm — `src/components/ReassessmentHistory.tsx` renders trigger, outcome, ratio changes, and reasoning for reassessments; vitest passes.
 - [ ] **P7-FE-4** — "Market stabilizes → reduce hedge" narrative view (BRD §37 Scene 8).
   - Test: `src/routes/AdaptationStory.test.tsx` — renders the timeline of hedge-on → hedge-reduced with the triggering events.
   - [ ] Confirm — the demo view tells the reduction story from real data.
