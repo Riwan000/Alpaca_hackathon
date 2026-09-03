@@ -1969,6 +1969,77 @@
         "title": "StrategyDecision",
         "type": "object"
       },
+      "StrategyDecisionOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "alternatives": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternatives"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "selected_hypothesis_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Hypothesis Id"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "action",
+          "rationale"
+        ],
+        "title": "StrategyDecisionOut",
+        "type": "object"
+      },
       "StrategyHypothesis": {
         "additionalProperties": false,
         "description": "A single strategy proposal from one Strategy Agent (BRD §16).",
@@ -2069,6 +2140,69 @@
           "rationale"
         ],
         "title": "StrategyHypothesis",
+        "type": "object"
+      },
+      "StrategyHypothesisOut": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legs": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legs"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "strategy_type",
+          "verdict"
+        ],
+        "title": "StrategyHypothesisOut",
         "type": "object"
       },
       "StrategyType": {
@@ -2467,6 +2601,114 @@
         "summary": "Stub Strategy",
         "tags": [
           "stubs"
+        ]
+      }
+    },
+    "/strategy/decision": {
+      "get": {
+        "description": "The decision for ``cycle_id`` (or the most recent one when omitted).",
+        "operationId": "strategy_decision_strategy_decision_get",
+        "parameters": [
+          {
+            "description": "the strategy-evaluation cycle to read",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the strategy-evaluation cycle to read",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Strategy Decision",
+        "tags": [
+          "strategy-readback"
+        ]
+      }
+    },
+    "/strategy/hypotheses": {
+      "get": {
+        "description": "All hypotheses in insertion order, optionally filtered to one cycle.\n\nRejected / NOT_VIABLE hypotheses are included — the rejection reasoning is\npart of the decision trail.",
+        "operationId": "strategy_hypotheses_strategy_hypotheses_get",
+        "parameters": [
+          {
+            "description": "restrict to one strategy-evaluation cycle",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "restrict to one strategy-evaluation cycle",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategyHypothesisOut"
+                  },
+                  "title": "Response Strategy Hypotheses Strategy Hypotheses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Strategy Hypotheses",
+        "tags": [
+          "strategy-readback"
         ]
       }
     },

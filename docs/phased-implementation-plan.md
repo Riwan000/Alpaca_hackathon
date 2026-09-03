@@ -437,15 +437,15 @@ Competing hypotheses over a common interface, then a reasoned selection.
 No execution.
 
 ### DB
-- [ ] **P4-DB-1** — `strategy_hypotheses` repository — persist all, including NOT_VIABLE / rejected.
+- [x] **P4-DB-1** — `strategy_hypotheses` repository — persist all, including NOT_VIABLE / rejected.
   - Test: `tests/db/test_hypotheses_repo.py` — 4 hypotheses saved per cycle incl. NOT_VIABLE ones; `rejection_reason` stored.
-  - [ ] Confirm — after `/strategy/evaluate`, `select strategy_type, verdict from strategy_hypotheses` shows all four.
-- [ ] **P4-DB-2** — `strategy_decisions` repository — rationale, considered alternatives, comparison table.
+  - [x] Confirm — `backend/db/strategy_repo.py::StrategyHypothesisRepository`; `save_many` writes all four in one transaction, `list_for_cycle` reads them back in insertion order (rejected included), `create`/`save_many` refuse an off-enum `verdict` before it hits the DB. `test_confirm_query_shows_all_four` runs `select strategy_type, verdict from strategy_hypotheses` and asserts the four `(PROTECTIVE_PUT, ACCEPTED) … (NO_HEDGE, REJECTED)` rows. Live `/strategy/evaluate` re-check rides on P4-BE-11.
+- [x] **P4-DB-2** — `strategy_decisions` repository — rationale, considered alternatives, comparison table.
   - Test: `tests/db/test_decisions_repo.py` — decision row links `selected_hypothesis_id`; `alternatives`/`comparison` jsonb non-empty.
-  - [ ] Confirm — `select action, rationale from strategy_decisions` shows a filled rationale.
-- [ ] **P4-DB-3** — Endpoints: `GET /strategy/hypotheses?cycle_id=`, `GET /strategy/decision?cycle_id=`.
+  - [x] Confirm — `backend/db/strategy_repo.py::StrategyDecisionRepository`; `create` links `selected_hypothesis_id` (FK enforced — `PRAGMA foreign_keys=ON` for SQLite, a dangling id raises), stores `alternatives` / `comparison` jsonb, and round-trips them non-empty for both `SELECT_STRATEGY` and `NO_TRADE`. `test_confirm_query_shows_a_filled_rationale` runs `select action, rationale from strategy_decisions`. Live re-check rides on P4-BE-11.
+- [x] **P4-DB-3** — Endpoints: `GET /strategy/hypotheses?cycle_id=`, `GET /strategy/decision?cycle_id=`.
   - Test: `tests/api/test_strategy_readback.py` — both filter by `cycle_id`; hypotheses include rejected ones.
-  - [ ] Confirm — `curl` both; counts match the DB.
+  - [x] Confirm — `backend/api/strategy_readback.py` (wired in `create_app`, shares `readback.get_readback_engine`): `/strategy/hypotheses` filters by `cycle_id` (else all) in insertion order with the REJECTED rows and their `rejection_reason` included; `/strategy/decision` returns that cycle's decision (else the latest), `404` when none. `test_returned_counts_match_the_db` reconciles the endpoint counts against `StrategyHypothesisRepository.count` / `list_for_cycle`. `openapi.json` regenerated. Live `curl` rides on P4-BE-11.
 
 ### Backend
 - [ ] **P4-BE-1** — `StrategyHypothesis` interface + base class (VIABLE / NOT_VIABLE, may reject its own family).
