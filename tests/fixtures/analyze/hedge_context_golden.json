@@ -1,0 +1,150 @@
+{
+  "current_hedge": {
+    "active": false,
+    "cost_basis": null,
+    "expiration": null,
+    "hedge_pnl": null,
+    "hedge_ratio": null,
+    "legs": [],
+    "strategy_type": null,
+    "target_hedge_ratio": null
+  },
+  "cycle_id": "cyc-golden-p3-be-13",
+  "degraded_sections": [],
+  "market_state": {
+    "as_of": "2026-09-03T14:30:00Z",
+    "index_trend": "DOWN",
+    "regime": "RISK_OFF",
+    "vix": 24.5
+  },
+  "news_context": [
+    {
+      "headline": "AAPL guides revenue below consensus",
+      "is_event": false,
+      "sentiment": null,
+      "source": "reuters",
+      "symbols": [
+        "AAPL"
+      ],
+      "ts": "2026-09-03T13:00:00Z"
+    }
+  ],
+  "objective": {
+    "drawdown_tolerance_pct": 0.1,
+    "max_hedge_budget_pct": 0.05,
+    "notes": "recorded fixture \u2014 protective put bias",
+    "target_hedge_ratio": 0.8
+  },
+  "option_candidates": [
+    {
+      "ask": 3.2,
+      "bid": 3.1,
+      "delta": -0.35,
+      "expiration": "2026-10-03",
+      "gamma": null,
+      "iv": 0.3,
+      "liquidity": "high",
+      "open_interest": 4200,
+      "premium": 3.1500000000000004,
+      "right": "PUT",
+      "strike": 145.0,
+      "theta": null,
+      "underlying": "AAPL",
+      "vega": null,
+      "volume": 900
+    },
+    {
+      "ask": 2.0,
+      "bid": 1.9,
+      "delta": -0.22,
+      "expiration": "2026-10-03",
+      "gamma": null,
+      "iv": 0.28,
+      "liquidity": "high",
+      "open_interest": 3100,
+      "premium": 1.95,
+      "right": "PUT",
+      "strike": 140.0,
+      "theta": null,
+      "underlying": "AAPL",
+      "vega": null,
+      "volume": 600
+    }
+  ],
+  "portfolio_state": {
+    "beta": null,
+    "buying_power": 50000.0,
+    "cash": 100000.0,
+    "concentration_hhi": 0.42000000000000004,
+    "drawdown": -0.046052631578947366,
+    "equity": 45000.0,
+    "gross_exposure": 45000.0,
+    "max_drawdown": 0.05921052631578947,
+    "net_exposure": 45000.0,
+    "positions": [
+      {
+        "asset_class": "EQUITY",
+        "avg_price": 150.0,
+        "market_value": 22500.0,
+        "qty": 100.0,
+        "side": "BUY",
+        "symbol": "AAPL",
+        "unrealized_pl": 7500.0
+      },
+      {
+        "asset_class": "EQUITY",
+        "avg_price": 100.0,
+        "market_value": 18000.0,
+        "qty": 150.0,
+        "side": "BUY",
+        "symbol": "NVDA",
+        "unrealized_pl": 3000.0
+      },
+      {
+        "asset_class": "EQUITY",
+        "avg_price": 95.0,
+        "market_value": 4500.0,
+        "qty": 50.0,
+        "side": "BUY",
+        "symbol": "TLT",
+        "unrealized_pl": -250.0
+      }
+    ],
+    "total_value": 145000.0,
+    "volatility": 0.3581096321619903
+  },
+  "schema_version": 1,
+  "stock_state": [
+    {
+      "key_levels": [
+        108.0,
+        150.0,
+        152.0
+      ],
+      "momentum": -0.013157894736842146,
+      "risk_note": "moderate volatility (\u03c3\u22480.28), negative momentum",
+      "symbol": "AAPL"
+    },
+    {
+      "key_levels": [
+        78.0,
+        118.0,
+        120.0
+      ],
+      "momentum": 0.016949152542372836,
+      "risk_note": "elevated volatility (\u03c3\u22480.35), positive momentum",
+      "symbol": "NVDA"
+    },
+    {
+      "key_levels": [
+        79.2,
+        90.0,
+        90.5
+      ],
+      "momentum": -0.0055248618784530246,
+      "risk_note": "moderate volatility (\u03c3\u22480.12), negative momentum",
+      "symbol": "TLT"
+    }
+  ],
+  "timestamp": "2026-09-03T14:30:00Z"
+}

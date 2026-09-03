@@ -1,0 +1,119 @@
+{
+  "cycle_id": "cyc-golden-p3-be-13",
+  "timestamp": "2026-09-03T14:30:00+00:00",
+  "objective": {
+    "max_hedge_budget_pct": 0.05,
+    "drawdown_tolerance_pct": 0.1,
+    "target_hedge_ratio": 0.8,
+    "notes": "recorded fixture — protective put bias"
+  },
+  "portfolio_state": {
+    "total_value": 145000.0,
+    "cash": 100000.0,
+    "equity": 45000.0,
+    "buying_power": 50000.0,
+    "positions": [
+      {
+        "symbol": "AAPL",
+        "qty": 100.0,
+        "avg_price": 150.0,
+        "market_value": 22500.0,
+        "asset_class": "EQUITY",
+        "side": "BUY",
+        "unrealized_pl": 7500.0
+      },
+      {
+        "symbol": "NVDA",
+        "qty": 150.0,
+        "avg_price": 100.0,
+        "market_value": 18000.0,
+        "asset_class": "EQUITY",
+        "side": "BUY",
+        "unrealized_pl": 3000.0
+      },
+      {
+        "symbol": "TLT",
+        "qty": 50.0,
+        "avg_price": 95.0,
+        "market_value": 4500.0,
+        "asset_class": "EQUITY",
+        "side": "BUY",
+        "unrealized_pl": -250.0
+      }
+    ]
+  },
+  "market_data": {
+    "index_symbol": "SPY",
+    "index_trend": "DOWN",
+    "index_price": 498.2,
+    "vix": 24.5,
+    "sector_trends": { "tech": "DOWN", "bonds": "UP" },
+    "macro_notes": ["Fed on hold", "credit spreads widening"],
+    "per_symbol": [
+      { "symbol": "AAPL", "last_price": 150.0, "prior_close": 152.0, "realized_vol": 0.28 },
+      { "symbol": "NVDA", "last_price": 120.0, "prior_close": 118.0, "realized_vol": 0.35 },
+      { "symbol": "TLT", "last_price": 90.0, "prior_close": 90.5, "realized_vol": 0.12 }
+    ],
+    "as_of": "2026-09-03T14:30:00+00:00"
+  },
+  "news_feed": [
+    {
+      "headline": "AAPL guides revenue below consensus",
+      "ts": "2026-09-03T13:00:00+00:00",
+      "body": "Apple cut its quarterly outlook, citing softer demand.",
+      "symbols": ["AAPL"],
+      "source": "reuters"
+    },
+    {
+      "headline": "Markets drift ahead of data",
+      "ts": "2026-09-03T12:15:00+00:00",
+      "body": "A routine session with light volume.",
+      "symbols": [],
+      "source": "wire"
+    }
+  ],
+  "option_chains": [
+    {
+      "underlying": "AAPL",
+      "spot": 150.0,
+      "quotes": [
+        {
+          "right": "PUT",
+          "strike": 145.0,
+          "expiration": "2026-10-03",
+          "bid": 3.1,
+          "ask": 3.2,
+          "volume": 900,
+          "open_interest": 4200,
+          "iv": 0.3,
+          "delta": -0.35
+        },
+        {
+          "right": "PUT",
+          "strike": 140.0,
+          "expiration": "2026-10-03",
+          "bid": 1.9,
+          "ask": 2.0,
+          "volume": 600,
+          "open_interest": 3100,
+          "iv": 0.28,
+          "delta": -0.22
+        },
+        {
+          "right": "PUT",
+          "strike": 130.0,
+          "expiration": "2026-10-03",
+          "bid": 0.8,
+          "ask": 1.3,
+          "volume": 100,
+          "open_interest": 90,
+          "iv": 0.26,
+          "delta": -0.1
+        }
+      ]
+    }
+  ],
+  "hedge_underlyings": ["AAPL"],
+  "equity_curve": [150000.0, 152000.0, 148000.0, 143000.0, 145200.0, 145000.0],
+  "benchmark_returns": [0.012, -0.026, -0.033, 0.015, -0.001]
+}

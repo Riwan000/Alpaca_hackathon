@@ -2250,6 +2250,28 @@
         ]
       }
     },
+    "/analyze": {
+      "post": {
+        "description": "Run one analysis cycle and return the assembled :class:`HedgeContext`.",
+        "operationId": "analyze_analyze_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HedgeContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Analyze",
+        "tags": [
+          "analyze"
+        ]
+      }
+    },
     "/context": {
       "get": {
         "description": "A fully-populated :class:`HedgeContext` fixture (BRD §14).",
