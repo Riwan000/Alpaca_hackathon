@@ -6,12 +6,15 @@ The four hedge-family agents share one shape: consume the assembled
 rejection of the family. :class:`StrategyAgent` (P4-BE-1) is that base class;
 :class:`ProtectivePutAgent`, :class:`PutSpreadAgent`, :class:`CollarAgent` and
 :class:`NoHedgeAgent` (P4-BE-2..5) are the concrete families.
+:class:`StrategyManager` (P4-BE-7/8/9) converts surviving hypotheses into a
+:class:`~backend.models.strategy.StrategyDecision`.
 """
 
 from __future__ import annotations
 
 from backend.agents.strategies.base import SelfRejection, StrategyAgent
 from backend.agents.strategies.collar import CollarAgent
+from backend.agents.strategies.manager import StrategyManager
 from backend.agents.strategies.no_hedge import NoHedgeAgent
 from backend.agents.strategies.prefilter import (
     DroppedHypothesis,
@@ -29,6 +32,7 @@ __all__ = [
     "PutSpreadAgent",
     "CollarAgent",
     "NoHedgeAgent",
+    "StrategyManager",
     "prefilter",
     "PrefilterLimits",
     "PrefilterResult",
