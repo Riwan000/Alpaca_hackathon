@@ -478,12 +478,12 @@ No execution.
 - [ ] **P4-BE-10** — Prompt templates for each agent and the manager.
   - Test: `tests/agents/test_prompts.py` — templates render with a sample context, no unfilled placeholders, within the token budget.
   - [ ] Confirm — dump a rendered prompt; it reads correctly and is complete.
-- [ ] **P4-BE-11** — `POST /strategy/evaluate` — consumes `HedgeContext`, returns `StrategyDecision` + hypotheses.
+- [x] **P4-BE-11** — `POST /strategy/evaluate` — consumes `HedgeContext`, returns `StrategyDecision` + hypotheses.
   - Test: `tests/api/test_strategy_evaluate.py` — 200; body validates; persists 4 hypotheses + 1 decision.
-  - [ ] Confirm — `curl -XPOST /strategy/evaluate` with a real context; decision + 4 hypotheses returned.
-- [ ] **P4-BE-12** — Tests — each agent emits a valid hypothesis; manager selection is deterministic given fixed inputs. *(test task for P4-BE-2..9)*
+  - [x] Confirm — `curl -XPOST /strategy/evaluate` with a real context; decision + 4 hypotheses returned.
+- [x] **P4-BE-12** — Tests — each agent emits a valid hypothesis; manager selection is deterministic given fixed inputs. *(test task for P4-BE-2..9)*
   - Test: the suite above under `tests/agents/`.
-  - [ ] Confirm — `pytest tests/agents -q` green.
+  - [x] Confirm — `pytest tests/agents -q` green.
 
 ### Frontend
 - [x] **P4-FE-1** — `StrategyComparison` — hypotheses side by side (cost / protection / verdict).

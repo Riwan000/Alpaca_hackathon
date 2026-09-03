@@ -2656,6 +2656,48 @@
         ]
       }
     },
+    "/strategy/evaluate": {
+      "post": {
+        "description": "Run the full strategy layer for ``context`` and return the decision.\n\nRuns all four hedge-family agents, pre-filters their hypotheses, then passes\nthe surviving set to the :class:`~backend.agents.strategies.StrategyManager`\n(validate → compare → select). All four hypotheses and the decision are\npersisted before the response is returned.\n\nReturns:\n    The :class:`~backend.models.strategy.StrategyDecision` (200 on success).\n\nRaises:\n    HTTPException 500: when the strategy layer raises an unexpected error or\n        persistence fails.",
+        "operationId": "strategy_evaluate_strategy_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HedgeContext"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyDecision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Strategy Evaluate",
+        "tags": [
+          "strategy"
+        ]
+      }
+    },
     "/strategy/hypotheses": {
       "get": {
         "description": "All hypotheses in insertion order, optionally filtered to one cycle.\n\nRejected / NOT_VIABLE hypotheses are included — the rejection reasoning is\npart of the decision trail.",
