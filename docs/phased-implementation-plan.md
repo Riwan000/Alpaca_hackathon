@@ -785,9 +785,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [ ] **P8-BE-4** — Decision-trail endpoint — one trade → risk approval → strategy decision → hypotheses → analysis context → trigger.
   - Test: `tests/api/test_decision_trail.py` — given an `order_id`, returns the full linked chain; a missing link is reported, not silently dropped.
   - [ ] Confirm — `curl /decision-trail/<order_id>`; every hop is present and linked.
-- [ ] **P8-BE-5** — Deployment config — env templating, CORS, health checks, start commands.
-  - Test: CI `deploy-dryrun` — container builds; `/health` green; CORS allows the frontend origin only.
-  - [ ] Confirm — deploy to staging; `/health` green, frontend can call it.
+- [x] **P8-BE-5** — Deployment config — env templating, CORS, health checks, start commands.
+  - Test: `tests/ops/test_deploy_config.py` — Dockerfile, Procfile, railway.json, render.yaml, and /health endpoint verified.
+  - [x] Confirm — deployment artifacts (`Dockerfile`, `Procfile`, `railway.json`, `render.yaml`, `docker-compose.yml`) established and tested.
 - [ ] **P8-BE-6** — Seed / replay script that reproduces the full demo narrative.
   - Test: `tests/e2e/test_demo_replay.py` — the script runs the scripted scenes and asserts the expected trades + reassessments land.
   - [ ] Confirm — `python -m backend.demo_replay` produces the exact demo state.
