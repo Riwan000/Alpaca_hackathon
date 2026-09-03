@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import React from 'react';
 import { AdaptationStory } from './AdaptationStory';
 
 describe('AdaptationStory Route & Component (P7-FE-4)', () => {

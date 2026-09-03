@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { Performance, type PerformanceSeriesPoint } from './Performance';
 
 describe('Performance Component (P8-FE-1)', () => {

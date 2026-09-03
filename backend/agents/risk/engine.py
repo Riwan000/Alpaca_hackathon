@@ -105,6 +105,11 @@ class CheckOutcome:
     A passing outcome carries no :attr:`code`; a failing one always does. That
     invariant is what stops the LLM Risk Agent (P5-BE-8) from clearing a
     deterministically-failed plan.
+
+    :attr:`warning` marks a *soft* breach — the check passed the hard threshold
+    but tripped a looser one (a wide-but-tradeable bid/ask spread, say). A
+    warning outcome is still ``passed``; the P5-BE-7 aggregator routes it to
+    :attr:`~backend.models.risk.RiskDecision.warnings` rather than blocking.
     """
 
     name: str
@@ -114,12 +119,15 @@ class CheckOutcome:
     detail: str = ""
     observed: float | None = None
     limit: float | None = None
+    warning: bool = False
 
     def __post_init__(self) -> None:
         if self.passed and self.code is not None:
             raise ValueError("a passing check cannot carry a violation code")
         if not self.passed and self.code is None:
             raise ValueError("a failing check must carry a violation code")
+        if self.warning and not self.passed:
+            raise ValueError("a warning outcome must be a passing check")
 
     @property
     def violated(self) -> bool:

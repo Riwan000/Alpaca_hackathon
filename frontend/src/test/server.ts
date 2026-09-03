@@ -614,12 +614,6 @@ export const handlers = [
   http.get('*/orders', () => {
     return HttpResponse.json(STUB_EXECUTION_RESULT);
   }),
-  http.get('*/monitoring', () => {
-    return HttpResponse.json(STUB_MONITORING_STATE);
-  }),
-  http.get('*/monitoring/state', () => {
-    return HttpResponse.json(STUB_MONITORING_STATE);
-  }),
   http.get('*/monitoring/events', () => {
     return HttpResponse.json([
       {
@@ -631,6 +625,12 @@ export const handlers = [
         fired_at: '2026-09-04T01:00:00Z',
       },
     ]);
+  }),
+  http.get('*/monitoring/state', () => {
+    return HttpResponse.json(STUB_MONITORING_STATE);
+  }),
+  http.get('*/monitoring', () => {
+    return HttpResponse.json(STUB_MONITORING_STATE);
   }),
   http.get('*/pnl/current', () => {
     return HttpResponse.json({

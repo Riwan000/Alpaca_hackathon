@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { HedgeDriftGauge } from './HedgeDriftGauge';
 
 describe('HedgeDriftGauge Component (P7-FE-2)', () => {

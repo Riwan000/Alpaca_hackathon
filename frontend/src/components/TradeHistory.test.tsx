@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import React from 'react';
 import { TradeHistory, type TradeItem } from './TradeHistory';
 
 describe('TradeHistory Component (P8-FE-5)', () => {

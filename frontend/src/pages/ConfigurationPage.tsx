@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sliders, Shield, Cpu, Save, Check } from 'lucide-react';
-import { useHedgeContext, useMonitoringState } from '../api/queries';
+import { useHedgeContext } from '../api/queries';
 
 const CONFIG_STORAGE_KEY = 'aegis_user_configuration';
 
@@ -32,7 +32,6 @@ const DEFAULT_CONFIG: UserConfiguration = {
 
 export const ConfigurationPage: React.FC = () => {
   const contextQuery = useHedgeContext();
-  const monitoringQuery = useMonitoringState();
 
   const [config, setConfig] = useState<UserConfiguration>(() => {
     try {

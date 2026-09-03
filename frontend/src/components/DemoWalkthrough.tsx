@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw, Play, CheckCircle2 } from 'lucide-react';
+import { RotateCcw, CheckCircle2 } from 'lucide-react';
 
 export interface DemoWalkthroughProps {
   onReset?: () => void;
