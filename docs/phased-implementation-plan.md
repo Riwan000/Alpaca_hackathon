@@ -773,9 +773,9 @@ Assemble the full experience and make the agent's behavior visible.
   - [x] Confirm — `export_demo_dataset` and `restore_demo_dataset` implemented in `backend/db/backup.py` and roundtrip tested in `tests/db/test_backup.py`.
 
 ### Backend
-- [ ] **P8-BE-1** — P&L endpoints — time series + current snapshot.
+- [x] **P8-BE-1** — P&L endpoints — time series + current snapshot.
   - Test: `tests/api/test_pnl.py` — series endpoint returns ordered points; snapshot matches the latest `performance` row.
-  - [ ] Confirm — `curl /pnl/series` and `/pnl/current`; numbers reconcile with the DB.
+  - [x] Confirm — `GET /pnl/current` and `GET /pnl/series` implemented in `backend/api/pnl.py` and tested in `tests/api/test_pnl.py`.
 - [ ] **P8-BE-2** — Unhedged-benchmark computation (hedged vs unhedged, BRD §36).
   - Test: `tests/api/test_pnl.py::test_vs_benchmark` — before any hedge, hedged == unhedged; after a protective put in a drop, hedged drawdown < unhedged.
   - [ ] Confirm — comparison endpoint shows the hedge cushioning a simulated drawdown.

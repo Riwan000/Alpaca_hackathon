@@ -1711,6 +1711,72 @@
         "title": "PayoffPoint",
         "type": "object"
       },
+      "PerformancePointOut": {
+        "properties": {
+          "benchmark_pnl": {
+            "title": "Benchmark Pnl",
+            "type": "number"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "drawdown": {
+            "title": "Drawdown",
+            "type": "number"
+          },
+          "hedge_cost": {
+            "title": "Hedge Cost",
+            "type": "number"
+          },
+          "hedge_pnl": {
+            "title": "Hedge Pnl",
+            "type": "number"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "net_pnl": {
+            "title": "Net Pnl",
+            "type": "number"
+          },
+          "portfolio_pnl": {
+            "title": "Portfolio Pnl",
+            "type": "number"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "portfolio_pnl",
+          "hedge_pnl",
+          "net_pnl",
+          "drawdown",
+          "hedge_cost",
+          "benchmark_pnl"
+        ],
+        "title": "PerformancePointOut",
+        "type": "object"
+      },
       "PortfolioLatestOut": {
         "properties": {
           "beta": {
@@ -3170,6 +3236,96 @@
         "summary": "Orders",
         "tags": [
           "exec-readback"
+        ]
+      }
+    },
+    "/pnl/current": {
+      "get": {
+        "description": "Return the latest performance snapshot.",
+        "operationId": "get_current_pnl_pnl_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformancePointOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Current Pnl",
+        "tags": [
+          "pnl"
+        ]
+      }
+    },
+    "/pnl/series": {
+      "get": {
+        "description": "Return ordered performance time series.",
+        "operationId": "get_pnl_series_pnl_series_get",
+        "parameters": [
+          {
+            "description": "Optional cycle filter",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional cycle filter",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PerformancePointOut"
+                  },
+                  "title": "Response Get Pnl Series Pnl Series Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pnl Series",
+        "tags": [
+          "pnl"
         ]
       }
     },
