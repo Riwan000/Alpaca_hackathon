@@ -805,9 +805,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [ ] **P8-FE-4** — `Configuration` page — RiskPreferences / HedgePreferences / AutonomySettings, persisted.
   - Test: `src/routes/Configuration.test.tsx` — edits validate, save `PATCH`es, reload shows the saved values; invalid input blocked.
   - [ ] Confirm — change a risk preference, reload, it sticks and affects the next cycle.
-- [ ] **P8-FE-5** — `TradeHistory` component.
+- [x] **P8-FE-5** — `TradeHistory` component.
   - Test: `src/components/TradeHistory.test.tsx` — one row per order with status + fills; sortable by date; empty state.
-  - [ ] Confirm — history matches `/orders`.
+  - [x] Confirm — `src/components/TradeHistory.tsx` renders sortable order audit log with fills, leg symbols, and empty states; tests pass.
 - [ ] **P8-FE-6** — Demo-script polish — deterministic walkthrough + reset button.
   - Test: `src/routes/Dashboard.test.tsx::reset` — reset returns the UI to the seed state without a page reload.
   - [ ] Confirm — run the demo, hit reset, re-run; identical result.
