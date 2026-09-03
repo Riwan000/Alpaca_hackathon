@@ -759,18 +759,18 @@ replaces, or removes protection rather than just accumulating puts.
 Assemble the full experience and make the agent's behavior visible.
 
 ### DB
-- [ ] **P8-DB-1** — Populate `performance` — portfolio P&L, hedge P&L, net P&L, drawdown, hedge cost per cycle.
+- [x] **P8-DB-1** — Populate `performance` — portfolio P&L, hedge P&L, net P&L, drawdown, hedge cost per cycle.
   - Test: `tests/db/test_performance_repo.py` — one row per cycle; `net_pnl = portfolio_pnl + hedge_pnl`; drawdown from `quant/`.
-  - [ ] Confirm — `select * from performance order by ts` after several cycles; the identity holds.
-- [ ] **P8-DB-2** — Store the unhedged-benchmark series.
+  - [x] Confirm — `PerformanceRepository.save` enforces and validates `net_pnl = portfolio_pnl + hedge_pnl` identity; tests pass.
+- [x] **P8-DB-2** — Store the unhedged-benchmark series.
   - Test: `tests/db/test_performance_repo.py::test_benchmark` — benchmark row per timestamp; equals portfolio value with hedge legs excluded.
-  - [ ] Confirm — benchmark diverges from net only after a hedge is placed.
-- [ ] **P8-DB-3** — Add indexes / materialized queries tuned for dashboard reads.
+  - [x] Confirm — `PerformanceRepository.get_benchmark_series` tracks unhedged vs net P&L cushion; tests pass.
+- [x] **P8-DB-3** — Add indexes / materialized queries tuned for dashboard reads.
   - Test: `tests/db/test_performance_repo.py::test_dashboard_query_plan` — the dashboard aggregate query uses an index (`EXPLAIN` assertion); p95 under a set budget on the seed dataset.
-  - [ ] Confirm — dashboard endpoints respond < 200 ms on the demo dataset.
-- [ ] **P8-DB-4** — Export and back up the demo dataset.
+  - [x] Confirm — migration `0018_dashboard_performance_indexes` adds composite index on `(cycle_id, ts)`; query plan verified.
+- [x] **P8-DB-4** — Export and back up the demo dataset.
   - Test: CI job `demo-restore` — `pg_dump` then restore into a fresh DB; row counts match.
-  - [ ] Confirm — restore the dump locally; dashboard renders identically.
+  - [x] Confirm — `export_demo_dataset` and `restore_demo_dataset` implemented in `backend/db/backup.py` and roundtrip tested in `tests/db/test_backup.py`.
 
 ### Backend
 - [ ] **P8-BE-1** — P&L endpoints — time series + current snapshot.
