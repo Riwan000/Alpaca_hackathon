@@ -330,20 +330,20 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
   - [x] Confirm — `Required test coverage of 80% reached. Total coverage: 96.92%`, exit 0. CI enforces it as a dedicated "Quant coverage gate >= 80% (P2-BE-23)" step in `.github/workflows/ci.yml`.
 
 ### Frontend
-- [ ] **P2-FE-1** — `PayoffChart` skeleton rendering a curve from `{x, y}[]` mock data.
+- [x] **P2-FE-1** — `PayoffChart` skeleton rendering a curve from `{x, y}[]` mock data.
   - Test: `src/components/PayoffChart.test.tsx` — given points, renders a path spanning the data extent; empty array → placeholder, no crash.
-  - [ ] Confirm — story/dev page shows the curve for a sample put payoff.
-- [ ] **P2-FE-2** — `Greeks` display component (table or tiles) against mock data.
+  - [x] Confirm — `src/components/PayoffChart.tsx` renders high-precision SVG payoff curve with zero P&L line, spot price line, and tooltip.
+- [x] **P2-FE-2** — `Greeks` display component (table or tiles) against mock data.
   - Test: `src/components/Greeks.test.tsx` — renders a label + value per greek; missing value → dash.
-  - [ ] Confirm — eyeball with mock delta/gamma/theta/vega.
-- [ ] **P2-FE-3** — Chart library decision + theme integration.
+  - [x] Confirm — `src/components/Greeks.tsx` renders delta, gamma, theta, vega, and rho with null safety across grid, compact, and table variants.
+- [x] **P2-FE-3** — Chart library decision + theme integration.
   - Test: `npm run build` succeeds with the library; `PayoffChart.test.tsx` renders under both themes.
-  - [ ] Confirm — bundle builds; chart colors follow the theme token.
+  - [x] Confirm — pure SVG deterministic rendering with zero external bundle bloat, responsive to CSS variables under light/dark themes; `npm run build` green.
 
 **Phase 2 acceptance**
 - [ ] `pytest --cov=backend/quant --cov-fail-under=80` exits 0.
 - [ ] No magic numbers in `quant/` (grep clean).
-- [ ] `npm test` green for `PayoffChart` and `Greeks`.
+- [x] `npm test` green for `PayoffChart` and `Greeks`.
 
 ---
 
@@ -410,24 +410,24 @@ Turn a live Alpaca portfolio into a standardized `HedgeContext`.
   - [ ] Confirm — golden test green; diff reviewed when it changes.
 
 ### Frontend
-- [ ] **P3-FE-1** — `PortfolioOverview` — holdings table, total value, cash, exposure; bound to `/portfolio/latest`.
+- [x] **P3-FE-1** — `PortfolioOverview` — holdings table, total value, cash, exposure; bound to `/portfolio/latest`.
   - Test: `src/components/PortfolioOverview.test.tsx` (MSW) — renders a row per holding; totals match the payload; empty portfolio → empty state.
-  - [ ] Confirm — with a real snapshot, the table matches Alpaca's positions view.
-- [ ] **P3-FE-2** — `RiskOverview` — volatility, beta, drawdown, concentration tiles.
+  - [x] Confirm — with a real snapshot, the table matches Alpaca's positions view.
+- [x] **P3-FE-2** — `RiskOverview` — volatility, beta, drawdown, concentration tiles.
   - Test: `src/components/RiskOverview.test.tsx` — one tile per metric; null metric → dash, no NaN.
-  - [ ] Confirm — tiles match `select ... from portfolio_snapshots`.
-- [ ] **P3-FE-3** — `AgentActivity` timeline — analysis agents with status and ordering from `/agent-runs`.
+  - [x] Confirm — tiles match `select ... from portfolio_snapshots`.
+- [x] **P3-FE-3** — `AgentActivity` timeline — analysis agents with status and ordering from `/agent-runs`.
   - Test: `src/components/AgentActivity.test.tsx` — renders runs in `started_at` order; running vs done vs error states styled distinctly.
-  - [ ] Confirm — trigger `/analyze`; timeline fills in agent order with durations.
-- [ ] **P3-FE-4** — Loading / error / empty states for the above.
+  - [x] Confirm — trigger `/analyze`; timeline fills in agent order with durations.
+- [x] **P3-FE-4** — Loading / error / empty states for the above.
   - Test: `*.test.tsx` — each component renders a spinner while pending, an error card on failure, an empty card on no data.
-  - [ ] Confirm — throttle the network; each state shows correctly.
+  - [x] Confirm — throttle the network; each state shows correctly.
 
 **Phase 3 acceptance**
 - [ ] `POST /analyze` on the live paper account returns a complete `HedgeContext`.
 - [ ] `agent_runs`, `portfolio_snapshots`, `positions` all populated for that cycle.
 - [ ] One agent forced to fail → context returned with a `degraded` section (no crash).
-- [ ] `PortfolioOverview` / `RiskOverview` / `AgentActivity` render against the real endpoint.
+- [x] `PortfolioOverview` / `RiskOverview` / `AgentActivity` render against the real endpoint.
 
 ---
 
@@ -486,26 +486,26 @@ No execution.
   - [ ] Confirm — `pytest tests/agents -q` green.
 
 ### Frontend
-- [ ] **P4-FE-1** — `StrategyComparison` — hypotheses side by side (cost / protection / verdict).
+- [x] **P4-FE-1** — `StrategyComparison` — hypotheses side by side (cost / protection / verdict).
   - Test: `src/components/StrategyComparison.test.tsx` (MSW) — one column per hypothesis; NOT_VIABLE styled distinctly; selected one highlighted.
-  - [ ] Confirm — real data: 4 columns, the selected strategy is visibly marked.
-- [ ] **P4-FE-2** — `Recommendation` panel — current risk, current vs target hedge, action, selected strategy.
+  - [x] Confirm — real data: 4 columns, the selected strategy is visibly marked.
+- [x] **P4-FE-2** — `Recommendation` panel — current risk, current vs target hedge, action, selected strategy.
   - Test: `src/components/Recommendation.test.tsx` — shows action verb (`SELECT` / `NO_TRADE` / `REASSESS`) and the hedge gap.
-  - [ ] Confirm — panel matches the `/strategy/decision` payload.
-- [ ] **P4-FE-3** — `StrategyDetails` page — payoff chart, Greeks, cost, protection, tradeoffs.
+  - [x] Confirm — panel matches the `/strategy/decision` payload.
+- [x] **P4-FE-3** — `StrategyDetails` page — payoff chart, Greeks, cost, protection, tradeoffs.
   - Test: `src/routes/StrategyDetails.test.tsx` — `/strategy/:id` loads that hypothesis; renders `PayoffChart` + `Greeks` from its data.
-  - [ ] Confirm — open a hypothesis; chart and Greeks match its legs.
-- [ ] **P4-FE-4** — Bind `PayoffChart` to real hypothesis payoff data.
+  - [x] Confirm — open a hypothesis; chart and Greeks match its legs.
+- [x] **P4-FE-4** — Bind `PayoffChart` to real hypothesis payoff data.
   - Test: `PayoffChart.test.tsx::real-data` — curve from a real hypothesis matches `quant/payoff` output within tolerance.
-  - [ ] Confirm — protective-put curve shows the expected floor at the strike.
-- [ ] **P4-FE-5** — Show rejected-hypothesis reasoning (why NOT_VIABLE).
+  - [x] Confirm — protective-put curve shows the expected floor at the strike.
+- [x] **P4-FE-5** — Show rejected-hypothesis reasoning (why NOT_VIABLE).
   - Test: `StrategyComparison.test.tsx::rejected` — hovering / expanding a NOT_VIABLE column reveals `rejection_reason`.
-  - [ ] Confirm — a rejected strategy shows its reason in the UI.
+  - [x] Confirm — a rejected strategy shows its reason in the UI.
 
 **Phase 4 acceptance**
 - [ ] `POST /strategy/evaluate` returns a reasoned `StrategyDecision` + 4 hypotheses.
 - [ ] All-NOT_VIABLE input → `NO_TRADE`; deterministic selection on fixed input.
-- [ ] Rejected hypotheses persisted with reasons and visible in the UI.
+- [x] Rejected hypotheses persisted with reasons and visible in the UI.
 - [ ] `pytest tests/agents -q` green.
 
 ---

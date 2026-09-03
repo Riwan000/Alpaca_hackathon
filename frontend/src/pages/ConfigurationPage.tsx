@@ -1,7 +1,14 @@
 import React from 'react';
-import { Sliders, Shield, Cpu, Save } from 'lucide-react';
+import { Sliders, Shield, Cpu, Save, RefreshCw } from 'lucide-react';
+import { useHedgeContext, useMonitoringState } from '../api/queries';
 
 export const ConfigurationPage: React.FC = () => {
+  const contextQuery = useHedgeContext();
+  const monitoringQuery = useMonitoringState();
+
+  const isLoading = contextQuery.isLoading || monitoringQuery.isLoading;
+  const objective = contextQuery.data?.objective;
+
   return (
     <div className="space-y-6" data-testid="configuration-page">
       {/* Page Title */}
@@ -12,15 +19,24 @@ export const ConfigurationPage: React.FC = () => {
           </h1>
           <p className="text-xs text-[var(--text-muted)] font-mono mt-1">
             RISK LIMITS • HEDGE PREFERENCES • AUTONOMY POLICIES
+            {objective?.notes && ` • ${objective.notes.toUpperCase()}`}
           </p>
         </div>
-        <button
-          disabled
-          className="px-4 py-2 bg-[var(--brand-spruce)] text-white text-xs font-mono font-medium flex items-center gap-1.5 opacity-80 cursor-not-allowed"
-        >
-          <Save className="w-3.5 h-3.5 text-[#A67C37]" />
-          Save Configuration
-        </button>
+        <div className="flex items-center gap-3">
+          {isLoading && (
+            <span className="flex items-center gap-1 text-xs font-mono text-[var(--text-muted)]" data-testid="loading-indicator">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Loading Configuration...
+            </span>
+          )}
+          <button
+            disabled
+            className="px-4 py-2 bg-[var(--brand-spruce)] text-white text-xs font-mono font-medium flex items-center gap-1.5 opacity-80 cursor-not-allowed"
+          >
+            <Save className="w-3.5 h-3.5 text-[#A67C37]" />
+            Save Configuration
+          </button>
+        </div>
       </div>
 
       {/* Grid of Configuration Panels */}
@@ -41,9 +57,11 @@ export const ConfigurationPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                defaultValue={10}
+                key={`dd-${objective?.drawdown_tolerance_pct}`}
+                defaultValue={objective?.drawdown_tolerance_pct ? objective.drawdown_tolerance_pct * 100 : 10}
                 className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] font-mono text-xs text-[var(--text-main)]"
                 readOnly
+                data-testid="input-drawdown-tolerance"
               />
             </div>
 
@@ -53,9 +71,11 @@ export const ConfigurationPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                defaultValue={85}
+                key={`th-${objective?.target_hedge_ratio}`}
+                defaultValue={objective?.target_hedge_ratio ? objective.target_hedge_ratio * 100 : 20}
                 className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] font-mono text-xs text-[var(--text-main)]"
                 readOnly
+                data-testid="input-target-hedge"
               />
             </div>
 
@@ -65,10 +85,12 @@ export const ConfigurationPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                defaultValue={0.75}
+                key={`hb-${objective?.max_hedge_budget_pct}`}
+                defaultValue={objective?.max_hedge_budget_pct ? objective.max_hedge_budget_pct * 100 : 5}
                 step="0.05"
                 className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] font-mono text-xs text-[var(--text-main)]"
                 readOnly
+                data-testid="input-max-budget"
               />
             </div>
           </div>
