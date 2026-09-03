@@ -515,18 +515,18 @@ No execution.
 The non-negotiable safety layer, then the first real paper trade.
 
 ### DB
-- [ ] **P5-DB-1** — `risk_checks` repository — approvals, rejections, modifications, violations, warnings.
+- [x] **P5-DB-1** — `risk_checks` repository — approvals, rejections, modifications, violations, warnings.
   - Test: `tests/db/test_risk_checks_repo.py` — one row per risk evaluation; `violations` non-empty on REJECT; `modifications` non-empty on MODIFY.
-  - [ ] Confirm — after `/execute`, `select verdict, violations from risk_checks` reflects the decision.
-- [ ] **P5-DB-2** — `orders` + `fills` repository.
+  - [x] Confirm — `backend/db/risk_checks_repo.py::RiskCheckRepository`; `create` writes one row per evaluation, `for_cycle` reads the latest, and the `RiskDecision` verdict invariants are enforced before the row lands (REJECT → ≥1 violation, MODIFY → ≥1 modification, APPROVE → no violation), off-enum `verdict` refused. `test_confirm_query_reflects_the_decision` runs `select cycle_id, verdict, violations from risk_checks` and asserts APPROVE / REJECT rows with the REJECT's violations populated. Live `/execute` re-check rides on P5-BE-9/P5-BE-15.
+- [x] **P5-DB-2** — `orders` + `fills` repository.
   - Test: `tests/db/test_orders_repo.py` — order persists with legs; fills link to the order; status transitions monotonic.
-  - [ ] Confirm — after a paper trade, `orders` + `fills` rows match Alpaca's order history.
-- [ ] **P5-DB-3** — Persist `slippage` and `execution_failures`.
+  - [x] Confirm — `backend/db/orders_repo.py::OrderRepository`; `save_with_fills` writes the order + `legs` and its fills in one transaction (a bad fill rolls the order back), `fills_for` / `get_with_fills` read them in insertion order, the `orders.id` FK is enforced. `update_status` accepts only forward moves through `PENDING→SUBMITTED→PARTIALLY_FILLED→FILLED` (+ terminal `CANCELLED`/`EXPIRED`/`REJECTED`) and raises `MonotonicStatusError` on a rank decrease or a move out of a terminal state (`test_status_transitions_are_monotonic`). Live paper-trade reconciliation rides on P5-BE-14/P5-BE-15.
+- [x] **P5-DB-3** — Persist `slippage` and `execution_failures`.
   - Test: `tests/db/test_orders_repo.py::test_slippage` — slippage = fill price − expected price; a failed submit writes an `execution_failures` row.
-  - [ ] Confirm — `select leg_symbol, slippage from fills` populated after a fill.
-- [ ] **P5-DB-4** — Read endpoints: `GET /risk/checks?cycle_id=`, `GET /orders?cycle_id=`.
+  - [x] Confirm — `OrderRepository.record_fill(order_id, ..., expected_price=)` stores `slippage = price − expected_price` (`NULL` when no expected price); migration `0015_execution_failures` adds `execution_failures` (cycle_id, nullable `order_id` FK → `orders` ON DELETE SET NULL, `leg_symbol`, `stage`, `reason`, `detail` jsonb, `failed_at`) + `cycle_id` / `order_id` indexes, with `backend/db/execution_failures_repo.py::ExecutionFailureRepository`. `test_slippage` asserts ±0.05 slippage, runs the confirm query `select leg_symbol, slippage from fills`, and writes a `SUBMIT`-stage failure row for a rejected combo order.
+- [x] **P5-DB-4** — Read endpoints: `GET /risk/checks?cycle_id=`, `GET /orders?cycle_id=`.
   - Test: `tests/api/test_exec_readback.py` — both filter by `cycle_id`; orders include nested fills.
-  - [ ] Confirm — `curl` both; data matches the DB.
+  - [x] Confirm — `backend/api/exec_readback.py` (wired in `create_app`, shares `readback.get_readback_engine`): `/risk/checks` filters by `cycle_id` (else all) in insertion order; `/orders` filters by `cycle_id` (else all) with each order's `fills` nested (empty list when none). `test_returned_data_matches_the_db` reconciles endpoint counts + nested-fill counts against `RiskCheckRepository.count` / `OrderRepository.count` / `.fills_for`. `openapi.json` regenerated. Live `curl` rides on P5-BE-15.
 
 ### Backend
 - [ ] **P5-BE-1** — Deterministic risk engine — hedge-budget check.

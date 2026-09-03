@@ -12,7 +12,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import __version__
-from backend.api import analyze, debug, health, readback, strategy_evaluate, strategy_readback, stubs
+from backend.api import (
+    analyze,
+    debug,
+    exec_readback,
+    health,
+    readback,
+    strategy_evaluate,
+    strategy_readback,
+    stubs,
+)
 
 _DEFAULT_CORS = ["http://localhost:3000", "http://localhost:5173"]
 
@@ -47,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(analyze.router)
     app.include_router(strategy_readback.router)
     app.include_router(strategy_evaluate.router)
+    app.include_router(exec_readback.router)
     app.include_router(stubs.router)
     return app
 

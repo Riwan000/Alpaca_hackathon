@@ -482,6 +482,56 @@
         "title": "FailedLeg",
         "type": "object"
       },
+      "FillOut": {
+        "properties": {
+          "filled_at": {
+            "format": "date-time",
+            "title": "Filled At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "leg_symbol": {
+            "title": "Leg Symbol",
+            "type": "string"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "number"
+          },
+          "slippage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slippage"
+          }
+        },
+        "required": [
+          "id",
+          "order_id",
+          "leg_symbol",
+          "qty",
+          "price",
+          "filled_at"
+        ],
+        "title": "FillOut",
+        "type": "object"
+      },
       "FilledLeg": {
         "additionalProperties": false,
         "description": "A leg that filled, with realized price and slippage vs the expected price.",
@@ -1360,6 +1410,71 @@
         "title": "OrderConstraints",
         "type": "object"
       },
+      "OrderOut": {
+        "properties": {
+          "broker_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Order Id"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "fills": {
+            "items": {
+              "$ref": "#/components/schemas/FillOut"
+            },
+            "title": "Fills",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legs": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legs"
+          },
+          "order_class": {
+            "title": "Order Class",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "order_class",
+          "status",
+          "submitted_at",
+          "fills"
+        ],
+        "title": "OrderOut",
+        "type": "object"
+      },
       "OrderSide": {
         "description": "Direction of a leg or position.",
         "enum": [
@@ -1737,6 +1852,77 @@
           "passed"
         ],
         "title": "RiskCheck",
+        "type": "object"
+      },
+      "RiskCheckOut": {
+        "properties": {
+          "checks": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checks"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "modifications": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modifications"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          },
+          "violations": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Violations"
+          },
+          "warnings": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warnings"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "verdict"
+        ],
+        "title": "RiskCheckOut",
         "type": "object"
       },
       "RiskDecision": {
@@ -2538,6 +2724,62 @@
         ]
       }
     },
+    "/orders": {
+      "get": {
+        "description": "Orders in insertion order with their fills nested, optionally by cycle.",
+        "operationId": "orders_orders_get",
+        "parameters": [
+          {
+            "description": "restrict to one execution cycle",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "restrict to one execution cycle",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrderOut"
+                  },
+                  "title": "Response Orders Orders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Orders",
+        "tags": [
+          "exec-readback"
+        ]
+      }
+    },
     "/portfolio/latest": {
       "get": {
         "description": "The most recent portfolio snapshot with its risk metrics and positions.",
@@ -2579,6 +2821,62 @@
         "summary": "Stub Risk",
         "tags": [
           "stubs"
+        ]
+      }
+    },
+    "/risk/checks": {
+      "get": {
+        "description": "Risk checks in insertion order, optionally filtered to one cycle.",
+        "operationId": "risk_checks_risk_checks_get",
+        "parameters": [
+          {
+            "description": "restrict to one risk-evaluation cycle",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "restrict to one risk-evaluation cycle",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RiskCheckOut"
+                  },
+                  "title": "Response Risk Checks Risk Checks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Risk Checks",
+        "tags": [
+          "exec-readback"
         ]
       }
     },
