@@ -529,12 +529,12 @@ The non-negotiable safety layer, then the first real paper trade.
   - [x] Confirm — `backend/api/exec_readback.py` (wired in `create_app`, shares `readback.get_readback_engine`): `/risk/checks` filters by `cycle_id` (else all) in insertion order; `/orders` filters by `cycle_id` (else all) with each order's `fills` nested (empty list when none). `test_returned_data_matches_the_db` reconciles endpoint counts + nested-fill counts against `RiskCheckRepository.count` / `OrderRepository.count` / `.fills_for`. `openapi.json` regenerated. Live `curl` rides on P5-BE-15.
 
 ### Backend
-- [ ] **P5-BE-1** — Deterministic risk engine — hedge-budget check.
+- [x] **P5-BE-1** — Deterministic risk engine — hedge-budget check.
   - Test: `tests/agents/test_risk_budget.py` — cost > budget → fail with the numbers; cost = budget → pass.
-  - [ ] Confirm — over-budget plan is blocked before any LLM call.
-- [ ] **P5-BE-2** — Position limits + max hedge ratio + max notional checks.
+  - [x] Confirm — `backend/agents/risk/engine.py::check_hedge_budget` is a pure `(StrategyHypothesis, HedgeContext)` function — no client arg, no I/O — so a rejection is inherently reached before the LLM Risk Agent (P5-BE-8). `cash_cost > max_hedge_budget_pct·total_value` → `CheckOutcome(passed=False, code=HEDGE_BUDGET_EXCEEDED)` carrying `observed` / `limit` / a numbers-in-it `detail` (reason reused from `quant/risk_limits.check_budget`, P2-BE-15); `cost == budget` passes with no code. `test_confirm_real_agent_over_budget_proposal_is_blocked_pre_llm` drives a live `ProtectivePutAgent().propose()` on `hedge_context_golden.json` (~$315), starves the budget to $100, and asserts the block; the same proposal passes on the real budget.
+- [x] **P5-BE-2** — Position limits + max hedge ratio + max notional checks.
   - Test: `tests/agents/test_risk_limits_engine.py` — each limit breached individually → distinct violation code; at-limit → pass.
-  - [ ] Confirm — a plan over max hedge ratio is rejected with that specific reason.
+  - [x] Confirm — `backend/agents/risk/engine.py`: `check_max_hedge_ratio` (ceiling `max(1.0, objective.target_hedge_ratio)`), `check_max_notional` (`Σ qty·strike·100` vs `total_value`) and `check_position_limit` (per-underlying: the larger of long/short option contracts must be covered by the shares held in that name — a 1×1 spread/collar on 100 shares passes, a 3× put or 2× naked short call does not) each fail with their own `ViolationCode` — `MAX_HEDGE_RATIO_EXCEEDED` / `MAX_NOTIONAL_EXCEEDED` / `POSITION_LIMIT_EXCEEDED` — and pass when exactly at the limit. `run_limit_checks` runs the trio in order so a plan over all three is rejected with all three reasons. `test_each_limit_breached_alone_yields_a_distinct_code` isolates one breach per context; `test_confirm_over_max_hedge_ratio_is_rejected_with_that_reason` rejects a 1.35-ratio plan on the golden context with `MAX_HEDGE_RATIO_EXCEEDED` while `max_notional` / `position_limit` stay clean (specific, not blanket). Codes are pinned in `backend/agents/risk/codes.py` and asserted in the test.
 - [ ] **P5-BE-3** — Buying-power + liquidity checks.
   - Test: `tests/agents/test_risk_bp_liquidity.py` — insufficient buying power → fail; wide bid/ask or low OI → liquidity warning/fail per threshold.
   - [ ] Confirm — a strike with no quotes is rejected as illiquid.
