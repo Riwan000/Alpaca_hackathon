@@ -535,18 +535,18 @@ The non-negotiable safety layer, then the first real paper trade.
 - [x] **P5-BE-2** — Position limits + max hedge ratio + max notional checks.
   - Test: `tests/agents/test_risk_limits_engine.py` — each limit breached individually → distinct violation code; at-limit → pass.
   - [x] Confirm — `backend/agents/risk/engine.py`: `check_max_hedge_ratio` (ceiling `max(1.0, objective.target_hedge_ratio)`), `check_max_notional` (`Σ qty·strike·100` vs `total_value`) and `check_position_limit` (per-underlying: the larger of long/short option contracts must be covered by the shares held in that name — a 1×1 spread/collar on 100 shares passes, a 3× put or 2× naked short call does not) each fail with their own `ViolationCode` — `MAX_HEDGE_RATIO_EXCEEDED` / `MAX_NOTIONAL_EXCEEDED` / `POSITION_LIMIT_EXCEEDED` — and pass when exactly at the limit. `run_limit_checks` runs the trio in order so a plan over all three is rejected with all three reasons. `test_each_limit_breached_alone_yields_a_distinct_code` isolates one breach per context; `test_confirm_over_max_hedge_ratio_is_rejected_with_that_reason` rejects a 1.35-ratio plan on the golden context with `MAX_HEDGE_RATIO_EXCEEDED` while `max_notional` / `position_limit` stay clean (specific, not blanket). Codes are pinned in `backend/agents/risk/codes.py` and asserted in the test.
-- [ ] **P5-BE-3** — Buying-power + liquidity checks.
+- [x] **P5-BE-3** — Buying-power + liquidity checks.
   - Test: `tests/agents/test_risk_bp_liquidity.py` — insufficient buying power → fail; wide bid/ask or low OI → liquidity warning/fail per threshold.
-  - [ ] Confirm — a strike with no quotes is rejected as illiquid.
-- [ ] **P5-BE-4** — Contract-validity + expiration checks.
+  - [x] Confirm — `backend/agents/risk/liquidity.py`: `check_buying_power` fails with `INSUFFICIENT_BUYING_POWER` when `hypothesis.cost > portfolio_state.buying_power` (override arg for tests), passes exactly at the limit. `check_liquidity` matches each leg to an `OptionCandidate` (`_match.match_candidate`) and rejects with `ILLIQUID_CONTRACT` on no quotes, a relative bid/ask spread over `LiquidityThresholds.max_relative_spread` (0.10), or open interest below `min_open_interest` (100); a spread over the 0.05 warn band or OI under 500 is a `CheckOutcome(passed=True, warning=True)`, not a block. `test_confirm_strike_with_no_quotes_is_rejected_as_illiquid` proposes a 130 strike against a 145-only candidate set → `ILLIQUID_CONTRACT` ("no quotes"), while `check_buying_power` on the same plan is clean.
+- [x] **P5-BE-4** — Contract-validity + expiration checks.
   - Test: `tests/agents/test_risk_contract.py` — unknown/expired contract → fail; expiry inside the min window → fail.
-  - [ ] Confirm — an already-expired option is rejected.
-- [ ] **P5-BE-5** — Greeks-bounds + multi-leg consistency checks.
+  - [x] Confirm — `backend/agents/risk/contract.py`: `check_contract_validity` fails with `UNKNOWN_CONTRACT` for any leg matching no analyzed `OptionCandidate` (wrong strike / expiry / underlying). `check_expiration_window` uses `context.timestamp.date()` as "now": `leg.expiration` before it → `CONTRACT_EXPIRED`; `0 <= days_to_expiry < DEFAULT_MIN_EXPIRY_DAYS` (7, override via `min_days`) → `EXPIRY_WINDOW_VIOLATION`; exactly `min_days` out passes. `test_confirm_already_expired_option_is_rejected` drives an Aug-2026 expiry on a Sep-3 context → `CONTRACT_EXPIRED` with a negative `observed` (days).
+- [x] **P5-BE-5** — Greeks-bounds + multi-leg consistency checks.
   - Test: `tests/agents/test_risk_greeks_multileg.py` — net delta outside band → fail; put-spread with inverted strikes → fail; collar missing a leg → fail.
-  - [ ] Confirm — a malformed 2-leg plan is rejected for inconsistency.
-- [ ] **P5-BE-6** — Execution-tolerance / price-band check.
+  - [x] Confirm — `backend/agents/risk/greeks.py`: `check_net_delta_bounds` fails with `NET_DELTA_OUT_OF_BOUNDS` when `hedge_metrics.net_delta` leaves the band `[-(covered_shares + tol), +tol]` (`tol = max(25, 0.15·shares)` share-equivalents, `NetDeltaBounds.from_context`); a missing `net_delta` is not evaluated; exactly on either bound passes. `check_multileg_consistency` fails with `MULTILEG_INCONSISTENT` on legs spanning underlyings, a `NO_HEDGE` carrying legs, an inverted put spread (long strike ≤ short strike) or one that is not one-long-one-short put, and a collar missing its long put / short call or with put strike ≥ call strike. `test_confirm_malformed_two_leg_plan_is_rejected_for_inconsistency` builds a COLLAR declared with two puts → rejected ("collar is missing its short call") while `check_net_delta_bounds` on the same plan is clean.
+- [x] **P5-BE-6** — Execution-tolerance / price-band check.
   - Test: `tests/agents/test_risk_price_band.py` — limit price outside the allowed % of mid → fail.
-  - [ ] Confirm — a plan priced 20% off mid is rejected.
+  - [x] Confirm — `backend/agents/risk/execution.py::check_price_band` screens every leg carrying a `limit_price` against the contract mid (`_match.candidate_mid` — `(bid+ask)/2`, else `premium`): `|limit_price - mid| / mid > DEFAULT_MAX_PRICE_DEVIATION_PCT` (0.05, override via `max_deviation_pct`) → `PRICE_BAND_EXCEEDED` carrying `observed` (deviation) / `limit` (band); legs with no limit price or no usable mid are skipped; exactly on the edge passes. `test_confirm_plan_priced_twenty_percent_off_mid_is_rejected` prices a leg at `mid·1.20` → `PRICE_BAND_EXCEEDED` with `observed ≈ 0.20`, `limit == 0.05`.
 - [ ] **P5-BE-7** — Risk-engine aggregator → structured pass/fail with per-check reasons.
   - Test: `tests/agents/test_risk_engine.py` — aggregate result lists every check with pass/fail + reason; any hard fail → overall REJECT.
   - [ ] Confirm — output shows the full checklist, not just a boolean.
@@ -788,9 +788,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-BE-5** — Deployment config — env templating, CORS, health checks, start commands.
   - Test: `tests/ops/test_deploy_config.py` — Dockerfile, Procfile, railway.json, render.yaml, and /health endpoint verified.
   - [x] Confirm — deployment artifacts (`Dockerfile`, `Procfile`, `railway.json`, `render.yaml`, `docker-compose.yml`) established and tested.
-- [ ] **P8-BE-6** — Seed / replay script that reproduces the full demo narrative.
+- [x] **P8-BE-6** — Seed / replay script that reproduces the full demo narrative.
   - Test: `tests/e2e/test_demo_replay.py` — the script runs the scripted scenes and asserts the expected trades + reassessments land.
-  - [ ] Confirm — `python -m backend.demo_replay` produces the exact demo state.
+  - [x] Confirm — `backend/demo_replay.py` reproduces the complete 8-scene demo dataset across all database tables; verified in `tests/e2e/test_demo_replay.py`.
 
 ### Frontend
 - [ ] **P8-FE-1** — `Performance` component — hedged vs unhedged chart + P&L tiles.
