@@ -7,7 +7,8 @@ live-money endpoint by accident.
 
 Only the read endpoints Phase 1 needs are implemented here
 (:meth:`AlpacaClient.get_account`, :meth:`AlpacaClient.get_positions`). Order
-submission and the option chain arrive in later phases and extend this class.
+submission arrives in a later phase and extends this class; option-chain access
+lives alongside in :mod:`backend.integrations.alpaca.options` (task P3-BE-3).
 
 The HTTP layer is plain :mod:`httpx`, so tests inject an ``httpx.MockTransport``
 and assert on the outgoing auth headers / URL without a network call.

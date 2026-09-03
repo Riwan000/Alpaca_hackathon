@@ -375,9 +375,9 @@ Turn a live Alpaca portfolio into a standardized `HedgeContext`.
 - [x] **P3-BE-2** — `integrations/news/` client — fetch and normalize articles / events.
   - Test: `tests/integrations/test_news.py` — recorded feed → normalized `{headline, ts, symbols, source}`; empty feed → `[]`.
   - [x] Confirm — `pytest -m smoke` returns ≥ 1 normalized article for a held symbol (10 for AAPL).
-- [ ] **P3-BE-3** — Alpaca option-chain access added to the Alpaca integration.
+- [x] **P3-BE-3** — Alpaca option-chain access added to the Alpaca integration (`integrations/alpaca/options.py` — `OptionChainClient`, OCC parsing, `illiquid` flag).
   - Test: `tests/integrations/test_alpaca_options.py` — recorded chain → strikes/expiries/greeks parsed; illiquid strike flagged.
-  - [ ] Confirm — `pytest -m smoke` pulls a live chain for a held symbol; bid/ask present.
+  - [x] Confirm — `pytest -m smoke` pulls a live SPY chain (4022 near-the-money contracts across all 16 expiries, every leg quoted; e.g. `SPY260918P00748000` bid 3.11 / ask 3.18, delta -0.217, iv 0.161).
 - [x] **P3-BE-4** — Context builder — hands each agent only task-relevant data (anti context-dilution, BRD §14).
   - Test: `tests/agents/test_context_builder.py` — each agent's slice contains its required keys and omits unrelated bulk (asserted by key set + size bound).
   - [x] Confirm — log the per-agent payload sizes; none carries the full portfolio blob.
