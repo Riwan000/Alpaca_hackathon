@@ -130,7 +130,15 @@ def _raw_inputs() -> AnalysisInputs:
 
 
 _EXPECTED_KEYS: dict[str, set[str]] = {
-    "portfolio": {"cycle_id", "timestamp", "objective", "portfolio_state", "current_hedge"},
+    "portfolio": {
+        "cycle_id",
+        "timestamp",
+        "objective",
+        "portfolio_state",
+        "current_hedge",
+        "equity_curve",
+        "benchmark_returns",
+    },
     "stock": {"cycle_id", "timestamp", "total_value", "holdings", "per_symbol", "market_index"},
     "market": {"cycle_id", "timestamp", "market_data"},
     "news": {"cycle_id", "timestamp", "news_feed", "held_symbols"},

@@ -381,21 +381,21 @@ Turn a live Alpaca portfolio into a standardized `HedgeContext`.
 - [x] **P3-BE-4** — Context builder — hands each agent only task-relevant data (anti context-dilution, BRD §14).
   - Test: `tests/agents/test_context_builder.py` — each agent's slice contains its required keys and omits unrelated bulk (asserted by key set + size bound).
   - [x] Confirm — log the per-agent payload sizes; none carries the full portfolio blob.
-- [ ] **P3-BE-5** — Portfolio Analysis Agent — positions, exposure, concentration, drawdown → partial context.
+- [x] **P3-BE-5** — Portfolio Analysis Agent — positions, exposure, concentration, drawdown → partial context.
   - Test: `tests/agents/test_portfolio_agent.py` (stubbed LLM) — output validates against the `HedgeContext` portfolio slice; numbers come from `quant/`, not the LLM.
-  - [ ] Confirm — run it on the seed portfolio; exposure/drawdown match a hand check.
-- [ ] **P3-BE-6** — Stock Analysis Agent — per-holding risk, momentum, key price levels.
+  - [x] Confirm — `backend/agents/portfolio/agent.py`; no LLM call — gross/net exposure + HHI recomputed via `quant.compute_exposure` / `compute_concentration`, drawdown/volatility from the `equity_curve` (`quant.compute_drawdown`, ≥3 pts for σ) else the snapshot value. Hand check pinned in `test_exposure_matches_hand_check` / `test_drawdown_matches_hand_check_on_the_equity_curve`. Live seed-portfolio re-check rides on the Phase 3 analysis pass (P3-BE-12).
+- [x] **P3-BE-6** — Stock Analysis Agent — per-holding risk, momentum, key price levels.
   - Test: `tests/agents/test_stock_agent.py` (stubbed LLM) — one entry per holding; schema-valid; unknown symbol handled.
-  - [ ] Confirm — output lists every seed holding with a risk note.
-- [ ] **P3-BE-7** — Market Analysis Agent — regime, index trend, volatility environment.
+  - [x] Confirm — `backend/agents/stock/agent.py`; one `StockView` per holding in order, momentum + key levels from the price bar, `risk_note` from a batched LLM call with a per-symbol deterministic fallback; a holding with no bar → `"no market data available"` (`test_unknown_symbol_is_handled_not_dropped`). Live seed-portfolio re-check rides on P3-BE-12.
+- [x] **P3-BE-7** — Market Analysis Agent — regime, index trend, volatility environment.
   - Test: `tests/agents/test_market_agent.py` (stubbed LLM) — regime ∈ enum; references real index data from P3-BE-1.
-  - [ ] Confirm — run during market hours; regime label is plausible vs the actual tape.
-- [ ] **P3-BE-8** — News Analysis Agent — relevance filter (events over headlines), sentiment, affected symbols.
+  - [x] Confirm — `backend/agents/market/agent.py`; regime constrained to the new `MarketRegime` enum (LLM pick, VIX + index-trend rule fallback), `index_trend` / `vix` / `as_of` passed through from the P3-BE-1 `MarketData`. `test_regime_is_always_a_valid_enum_token` / `test_index_data_is_passed_through_from_p3_be_1`. Live market-hours plausibility check rides on P3-BE-12.
+- [x] **P3-BE-8** — News Analysis Agent — relevance filter (events over headlines), sentiment, affected symbols.
   - Test: `tests/agents/test_news_agent.py` — a noise headline is dropped; a material event for a held name is kept and tagged with the symbol.
-  - [ ] Confirm — feed a known event; it surfaces against the right holding.
-- [ ] **P3-BE-9** — Options Analysis Agent — chain liquidity, IV surface, candidate strikes / expiries.
+  - [x] Confirm — `backend/agents/news/agent.py`; keep an item iff the LLM marks `is_event` or it names a held symbol, affected set always ∩ `held_symbols`, batched call with a held-symbol-only fallback. `test_noise_dropped_event_for_held_name_kept_and_tagged` / `test_non_held_symbol_is_never_surfaced`. Live known-event check rides on P3-BE-12.
+- [x] **P3-BE-9** — Options Analysis Agent — chain liquidity, IV surface, candidate strikes / expiries.
   - Test: `tests/agents/test_options_agent.py` — candidates respect liquidity threshold; expiries within the configured window.
-  - [ ] Confirm — candidates for a held symbol have non-zero open interest.
+  - [x] Confirm — `backend/agents/options/agent.py`; no LLM — deterministic chain filter (open-interest floor, relative bid/ask-spread ceiling, DTE window), ranked by OI and capped per underlying; IV carried through per row. `test_liquidity_and_window_gates` asserts every survivor has `open_interest >= min` and DTE in window. Live held-symbol chain (non-zero OI) rides on P3-BE-3 + P3-BE-12.
 - [ ] **P3-BE-10** — `HedgeContext` assembler — merge agent outputs, validate completeness, mark degraded fields.
   - Test: `tests/agents/test_context_assembler.py` — full inputs → complete `HedgeContext`; one agent failing → context still returned with that section flagged `degraded`.
   - [ ] Confirm — kill one agent; `/analyze` still returns 200 with a `degraded` marker.

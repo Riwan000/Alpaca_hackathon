@@ -144,6 +144,16 @@ class AnalysisInputs(Contract):
         default_factory=list,
         description="tickers a hedge may be built on; defaults to the held names",
     )
+    equity_curve: list[float] = Field(
+        default_factory=list,
+        description="portfolio equity curve (oldest→newest) — Portfolio agent "
+        "drawdown / volatility; empty means fall back to the snapshot metrics",
+    )
+    benchmark_returns: list[float] = Field(
+        default_factory=list,
+        description="index return series aligned to the equity curve — Portfolio "
+        "agent beta; empty means keep the snapshot beta",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -203,6 +213,8 @@ def _slice_portfolio(inp: AnalysisInputs) -> dict[str, Any]:
         "objective": inp.objective.model_dump(mode="json"),
         "portfolio_state": inp.portfolio_state.model_dump(mode="json"),
         "current_hedge": inp.current_hedge.model_dump(mode="json"),
+        "equity_curve": list(inp.equity_curve),
+        "benchmark_returns": list(inp.benchmark_returns),
     }
 
 

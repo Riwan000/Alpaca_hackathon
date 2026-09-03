@@ -17,6 +17,7 @@ __all__ = [
     "DecisionType",
     "ExecutionStatus",
     "HedgeAction",
+    "MarketRegime",
     "OptionRight",
     "OrderSide",
     "OrderStatus",
@@ -98,6 +99,19 @@ class TriggerType(str, Enum):
     DRAWDOWN_LIMIT = "DRAWDOWN_LIMIT"
     TIME_ELAPSED = "TIME_ELAPSED"
     MANUAL = "MANUAL"
+
+
+class MarketRegime(str, Enum):
+    """Coarse market-environment classification from the Market Analysis Agent.
+
+    The Market agent must return one of these tokens (BRD §13); a rule-based
+    fallback fills one in when the LLM answer is missing or off-enum.
+    """
+
+    RISK_ON = "RISK_ON"
+    NEUTRAL = "NEUTRAL"
+    RISK_OFF = "RISK_OFF"
+    HIGH_VOL = "HIGH_VOL"
 
 
 class OptionRight(str, Enum):
