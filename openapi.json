@@ -284,6 +284,73 @@
         "title": "CurrentHedge",
         "type": "object"
       },
+      "CycleStateOut": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "current_node": {
+            "title": "Current Node",
+            "type": "string"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transitions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WorkflowTransitionOut"
+            },
+            "title": "Transitions",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "current_node",
+          "status"
+        ],
+        "title": "CycleStateOut",
+        "type": "object"
+      },
       "DecisionType": {
         "description": "Strategy Manager selection outcome (BRD §17 step 4).",
         "enum": [
@@ -2505,6 +2572,70 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WorkflowTransitionOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "from_node": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Node"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "to_node": {
+            "title": "To Node",
+            "type": "string"
+          },
+          "transitioned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transitioned At"
+          }
+        },
+        "required": [
+          "to_node",
+          "status"
+        ],
+        "title": "WorkflowTransitionOut",
+        "type": "object"
       }
     }
   },
@@ -2611,6 +2742,51 @@
         "summary": "Stub Context",
         "tags": [
           "stubs"
+        ]
+      }
+    },
+    "/cycle/{cycle_id}/state": {
+      "get": {
+        "description": "Return current node, status, and transition history for a cycle.",
+        "operationId": "get_cycle_state_cycle__cycle_id__state_get",
+        "parameters": [
+          {
+            "description": "Unique ID of the orchestrator run cycle",
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "description": "Unique ID of the orchestrator run cycle",
+              "title": "Cycle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cycle State",
+        "tags": [
+          "workflow"
         ]
       }
     },

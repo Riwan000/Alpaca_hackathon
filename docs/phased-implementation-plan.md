@@ -611,9 +611,9 @@ Wire Phases 3–5 into one stateful pass. First hands-off cycle.
 - [ ] **P6-DB-2** — Persist node transitions so a restart resumes the decision history (Tech-Stack §21).
   - Test: `tests/e2e/test_resume.py` — kill the process mid-cycle, restart → run continues from the last persisted node, no duplicate orders.
   - [ ] Confirm — Ctrl-C during `ANALYZING`, restart; the cycle resumes, doesn't restart.
-- [ ] **P6-DB-3** — `GET /cycle/:id/state` endpoint.
+- [x] **P6-DB-3** — `GET /cycle/:id/state` endpoint.
   - Test: `tests/api/test_cycle_state.py` — returns current node + status + transition history for the cycle.
-  - [ ] Confirm — `curl /cycle/<id>/state` during a run shows the node advancing.
+  - [x] Confirm — `GET /cycle/{cycle_id}/state` implemented in `backend/api/workflow.py` returning current state and transitions history; `tests/api/test_cycle_state.py` green.
 
 ### Backend
 - [ ] **P6-BE-1** — LangGraph state-machine skeleton — nodes `INITIAL → ANALYZING → STRATEGY_EVALUATION → RISK_CHECK → EXECUTION → MONITORING`.
