@@ -736,9 +736,9 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-FE-1** — Monitoring / triggers panel — active triggers + history.
   - Test: `src/components/MonitoringPanel.test.tsx` (MSW) — lists active triggers; history ordered by `fired_at`; empty → "all clear".
   - [x] Confirm — `src/components/MonitoringPanel.tsx` renders active trigger badges, all-clear indicator, and ordered trigger event history; vitest suite passes.
-- [ ] **P7-FE-2** — Current-vs-target hedge-drift gauge.
+- [x] **P7-FE-2** — Current-vs-target hedge-drift gauge.
   - Test: `src/components/HedgeDriftGauge.test.tsx` — needle at current, marker at target; inside deadband styled calm, outside styled alert.
-  - [ ] Confirm — gauge matches `current_hedge` vs `target_hedge` from state.
+  - [x] Confirm — `src/components/HedgeDriftGauge.tsx` renders current vs target gauge with deadband corridor and alert/calm styling; tests pass.
 - [ ] **P7-FE-3** — Reassessment history list (trigger → outcome → hedge change).
   - Test: `src/components/ReassessmentHistory.test.tsx` — one row per reassessment linking trigger, outcome, and the resulting `hedge_changes` delta.
   - [ ] Confirm — a `DECREASE` shows trigger, outcome, and the ratio drop.
