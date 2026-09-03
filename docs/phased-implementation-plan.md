@@ -451,21 +451,21 @@ No execution.
 - [x] **P4-BE-1** — `StrategyHypothesis` interface + base class (VIABLE / NOT_VIABLE, may reject its own family).
   - Test: `tests/agents/test_hypothesis_base.py` — subclass must emit a schema-valid hypothesis; self-rejection path returns NOT_VIABLE with a reason.
   - [x] Confirm — `backend/agents/strategies/base.py::StrategyAgent`: a concrete agent sets `strategy` (a `StrategyType`) and implements `build(context) -> StrategyHypothesis`; callers use `propose(context)`, which returns a viable hypothesis unchanged, converts a `SelfRejection` raised anywhere in `build` into a schema-valid `viable=False` hypothesis carrying `rejection_reason` (BRD §16), and guards the family / `cycle_id` invariants. Helpers `viable(...)` / `not_viable(reason, ...)` wire in `cycle_id` + `strategy` so P4-BE-2..5 stay quant-focused. `__init_subclass__` rejects a concrete agent that forgets its family. `test_hypothesis_base.py` — throwaway `_ViablePut` round-trips through `StrategyHypothesis.model_validate`; `_RejectsViaException` / `_RejectsViaHelper` return NOT_VIABLE with the reason; mislabelled-family, wrong-cycle and non-hypothesis returns all raise.
-- [ ] **P4-BE-2** — Protective Put agent.
+- [x] **P4-BE-2** — Protective Put agent.
   - Test: `tests/agents/test_protective_put.py` (stubbed LLM + real `quant/`) — picks a strike/expiry within budget; cost, floor, Greeks come from `quant/`; over-budget context → NOT_VIABLE.
-  - [ ] Confirm — run on the seed context; payoff floor and cost match a hand check.
-- [ ] **P4-BE-3** — Put Spread agent.
+  - [x] Confirm — `backend/agents/strategies/protective_put.py::ProtectivePutAgent`: sizes one put per 100 covered shares of the book's largest long equity holding, struck nearest `spot·(1−drawdown_tolerance)`; `cost = premium_cash(...)`, the floor / Greeks / breakevens from `structure_risk` + `black_scholes` (`_common.py` shares the plumbing). `SelfRejection` (→ NOT_VIABLE) when nothing to hedge, no put on the name, under one contract, or premium > budget. On the seed context (`hedge_context_golden.json`) it buys the AAPL 145 put for $315 and floors the covered position at −$8,315 — matches the hand check.
+- [x] **P4-BE-3** — Put Spread agent.
   - Test: `tests/agents/test_put_spread.py` — long strike > short strike; max loss = net debit; NOT_VIABLE when spread can't fit the budget.
-  - [ ] Confirm — legs and net debit reconcile with `quant/payoff`.
-- [ ] **P4-BE-4** — Collar agent.
+  - [x] Confirm — `backend/agents/strategies/put_spread.py::PutSpreadAgent`: long the tolerance-strike put, short the highest strike below it; `cost = net_premium_cash([...])` and `hedge_metrics.max_loss == cost == -structure_risk(hedge_legs).worst_pnl` (80.0 on the synthetic context, breakeven 89.20). `SelfRejection` when <2 put strikes, no lower strike to sell, non-positive debit, or debit > budget.
+- [x] **P4-BE-4** — Collar agent.
   - Test: `tests/agents/test_collar.py` — long put + short call; net cost near zero or credited; call cap recorded.
-  - [ ] Confirm — collar cost ≈ 0 on a representative context.
-- [ ] **P4-BE-5** — No-Hedge agent.
+  - [x] Confirm — `backend/agents/strategies/collar.py::CollarAgent`: long the tolerance-strike put, short the OTM call whose premium best offsets it; `net_premium_cash([...])` is a small debit ($20) or a credit ($30 → `cost` clamps to 0), the short-call strike is recorded in `tradeoffs` + `rationale` as the upside cap. `SelfRejection` with no put or no call. Portfolio `max_loss` $1,020 reconciles with `structure_risk`.
+- [x] **P4-BE-5** — No-Hedge agent.
   - Test: `tests/agents/test_no_hedge.py` — always VIABLE; rationale references current drawdown vs tolerance.
-  - [ ] Confirm — output present as a real alternative in the comparison.
-- [ ] **P4-BE-6** — Deterministic pre-filter — drop hypotheses that violate budget / limits before LLM reasoning.
+  - [x] Confirm — `backend/agents/strategies/no_hedge.py::NoHedgeAgent`: never raises `SelfRejection` — every context (incl. an empty book) yields a VIABLE `NO_TRADE` hypothesis whose rationale states `drawdown {x:.1%} is within/beyond the {tol:.1%} tolerance`. On the seed context: "drawdown 4.6% is within the 10.0% tolerance". Slots into the manager's comparison as a real alternative (P4-BE-8).
+- [x] **P4-BE-6** — Deterministic pre-filter — drop hypotheses that violate budget / limits before LLM reasoning.
   - Test: `tests/agents/test_prefilter.py` — a hypothesis over max hedge ratio / notional / budget is removed with a logged reason before the manager sees it.
-  - [ ] Confirm — force an over-budget hypothesis; it never reaches the manager prompt (check the log).
+  - [x] Confirm — `backend/agents/strategies/prefilter.py::prefilter`: runs `quant/risk_limits.check_all_limits` over every VIABLE hypothesis — `cost` vs `max_hedge_budget_pct·total_value`, `hedge_metrics.hedge_ratio` vs `max(1.0, objective.target_hedge_ratio)`, and gross leg notional (`Σ qty·strike·100`) vs `total_value` — and splits them into `PrefilterResult.kept` (what the manager sees) / `.dropped` (with reasons). NOT_VIABLE families pass through untouched for the all-rejected → `NO_TRADE` path. Each drop logs `WARNING backend.agents.strategies.prefilter: pre-filter dropped <STRATEGY> (cycle <id>) before the manager: <reasons>`. `test_confirm_forced_over_budget_agent_output_never_reaches_kept` runs the real `ProtectivePutAgent` on `hedge_context_golden.json` (viable ~$315), starves the budget to $100 via `PrefilterLimits`, and asserts `PROTECTIVE_PUT` is absent from `kept_strategies`, present in `dropped` with a "budget" reason, and named in a captured `WARNING`; the zero-cost `NO_HEDGE` alternative still reaches the manager. Manager wiring rides on P4-BE-7/P4-BE-11.
 - [ ] **P4-BE-7** — Strategy Manager — validation stage.
   - Test: `tests/agents/test_manager_validate.py` — malformed hypothesis rejected; all-NOT_VIABLE input → `NO_TRADE`.
   - [ ] Confirm — feed 4 NOT_VIABLE hypotheses; decision is `NO_TRADE`.
