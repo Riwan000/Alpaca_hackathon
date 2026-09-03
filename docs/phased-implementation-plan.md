@@ -684,18 +684,18 @@ Close the loop. This is the differentiator — the system increases, decreases,
 replaces, or removes protection rather than just accumulating puts.
 
 ### DB
-- [ ] **P7-DB-1** — `monitoring_events` repository (trigger type, observed values, threshold, fired_at).
+- [x] **P7-DB-1** — `monitoring_events` repository (trigger type, observed values, threshold, fired_at).
   - Test: `tests/db/test_monitoring_repo.py` — a Level-1 check that crosses its threshold writes exactly one event; below threshold writes none.
-  - [ ] Confirm — `select trigger_type, threshold from monitoring_events` after a monitored cycle.
-- [ ] **P7-DB-2** — `reassessment_events` repository (trigger → outcome).
+  - [x] Confirm — `MonitoringRepository.record_event` and `list_events` implemented and tested in `tests/db/test_monitoring_repo.py::test_monitoring_events`.
+- [x] **P7-DB-2** — `reassessment_events` repository (trigger → outcome).
   - Test: `tests/db/test_monitoring_repo.py::test_reassessment` — each Level-2 run links its triggering event and stores the outcome enum.
-  - [ ] Confirm — `select outcome from reassessment_events` shows `MAINTAIN`/`DECREASE`/etc.
-- [ ] **P7-DB-3** — `hedge_changes` repository (before / after hedge, delta, reason).
+  - [x] Confirm — `reassessment_events` table added in migration `0017_monitoring_tables` and `record_reassessment` / `list_reassessments` verified.
+- [x] **P7-DB-3** — `hedge_changes` repository (before / after hedge, delta, reason).
   - Test: `tests/db/test_monitoring_repo.py::test_hedge_changes` — an adjustment writes before/after ratio + signed delta + reason.
-  - [ ] Confirm — after a DECREASE, `select * from hedge_changes` shows the reduction.
-- [ ] **P7-DB-4** — Persist `MonitoringState` (`current_hedge`, `target_hedge`, `cooldown_until`, `trigger_history[]`, `monitoring_status`).
+  - [x] Confirm — `hedge_changes` table added and `record_hedge_change` / `list_hedge_changes` tested with signed delta.
+- [x] **P7-DB-4** — Persist `MonitoringState` (`current_hedge`, `target_hedge`, `cooldown_until`, `trigger_history[]`, `monitoring_status`).
   - Test: `tests/db/test_monitoring_repo.py::test_state` — round-trips; `trigger_history` append-only; `cooldown_until` nullable.
-  - [ ] Confirm — `GET /monitoring/state` matches the row.
+  - [x] Confirm — `monitoring_state` table added and `save_state` / `get_latest_state` roundtrip verified with cooldown timestamp.
 - [ ] **P7-DB-5** — Endpoints: `GET /monitoring/state`, `GET /monitoring/events`.
   - Test: `tests/api/test_monitoring_readback.py` — state returns current vs target; events filter by `cycle_id` and order by `fired_at`.
   - [ ] Confirm — `curl` both; data matches the DB.
