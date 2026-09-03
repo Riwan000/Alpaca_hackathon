@@ -10,6 +10,7 @@ import type {
   MonitoringState,
   HealthResponse,
   AgentRun,
+  WorkflowState,
 } from '../api/types';
 
 export const STUB_HEDGE_CONTEXT: HedgeContext = {
@@ -213,13 +214,64 @@ export const STUB_RISK_DECISION: RiskDecision = {
   checks: [
     { name: 'hedge_budget', category: 'COST', passed: true, observed: 0.017, limit: 0.05 },
     { name: 'max_hedge_ratio', category: 'POSITION_LIMITS', passed: true, observed: 0.2, limit: 0.35 },
+    { name: 'liquidity', category: 'EXECUTION', passed: true, observed: 5000, limit: 1000 },
     { name: 'buying_power', category: 'EXECUTION', passed: true },
   ],
   violations: [],
   warnings: ['IV is elevated vs its 30-day average'],
   modifications: [],
-  rationale: 'Every deterministic check passes and the plan is inside budget.',
+  rationale: 'All risk limits satisfied within safety thresholds.',
   approved_hypothesis: STUB_STRATEGY_HYPOTHESIS,
+};
+
+export const STUB_RISK_DECISION_MODIFY: RiskDecision = {
+  cycle_id: 'cyc-002',
+  verdict: 'MODIFY',
+  checks: [
+    { name: 'hedge_budget', category: 'COST', passed: true, observed: 0.045, limit: 0.05 },
+    { name: 'max_hedge_ratio', category: 'POSITION_LIMITS', passed: false, observed: 0.38, limit: 0.35, details: 'Exceeds max allowed hedge ratio' },
+    { name: 'liquidity', category: 'EXECUTION', passed: true, observed: 5000, limit: 1000 },
+    { name: 'buying_power', category: 'EXECUTION', passed: true },
+  ],
+  violations: ['Requested contracts (25) exceeds max allowable hedge ratio (0.35)'],
+  warnings: ['High option implied volatility'],
+  modifications: [
+    {
+      field: 'quantity',
+      from_value: 25,
+      to_value: 20,
+      reason: 'Downsized to 20 contracts to comply with 35% max hedge ratio constraint.',
+    },
+  ],
+  rationale: 'Downsized contract sizing to comply with portfolio exposure limits.',
+};
+
+export const STUB_RISK_DECISION_REJECT: RiskDecision = {
+  cycle_id: 'cyc-003',
+  verdict: 'REJECT',
+  checks: [
+    { name: 'hedge_budget', category: 'COST', passed: false, observed: 0.075, limit: 0.05, details: 'Premium cost $75,000 exceeds 5% max budget ($50,000)' },
+    { name: 'max_hedge_ratio', category: 'POSITION_LIMITS', passed: true, observed: 0.2, limit: 0.35 },
+    { name: 'liquidity', category: 'EXECUTION', passed: false, observed: 100, limit: 1000, details: 'Option open interest (100) below minimum threshold (1000)' },
+    { name: 'buying_power', category: 'EXECUTION', passed: true },
+  ],
+  violations: [
+    'Premium cost exceeds max allocated hedge budget (5.0%)',
+    'Open interest below institutional liquidity threshold (1,000 contracts)',
+  ],
+  warnings: [],
+  modifications: [],
+  rationale: 'Rejected due to hard budget breach and insufficient chain liquidity.',
+};
+
+export const STUB_WORKFLOW_STATE: WorkflowState = {
+  cycle_id: 'cyc-001',
+  current_node: 'COMPLETE',
+  progress_pct: 100,
+  status: 'completed',
+  active_agent: 'Monitoring Agent',
+  started_at: '2026-09-03T14:30:00Z',
+  completed_at: '2026-09-03T14:30:05Z',
 };
 
 export const STUB_EXECUTION_PLAN: ExecutionPlan = {
@@ -550,14 +602,31 @@ export const handlers = [
   http.get('*/risk', () => {
     return HttpResponse.json(STUB_RISK_DECISION);
   }),
+  http.get('*/risk/checks', () => {
+    return HttpResponse.json(STUB_RISK_DECISION);
+  }),
   http.get('*/execution/plan', () => {
     return HttpResponse.json(STUB_EXECUTION_PLAN);
   }),
   http.get('*/execution', () => {
     return HttpResponse.json(STUB_EXECUTION_RESULT);
   }),
+  http.get('*/orders', () => {
+    return HttpResponse.json(STUB_EXECUTION_RESULT);
+  }),
   http.get('*/monitoring', () => {
     return HttpResponse.json(STUB_MONITORING_STATE);
+  }),
+  http.get('*/workflow/state', () => {
+    return HttpResponse.json(STUB_WORKFLOW_STATE);
+  }),
+  http.post('*/run-cycle', () => {
+    return HttpResponse.json({
+      cycle_id: 'cyc-002',
+      status: 'started',
+      message: 'Autonomous hedge cycle initiated',
+      started_at: new Date().toISOString(),
+    });
   }),
 ];
 

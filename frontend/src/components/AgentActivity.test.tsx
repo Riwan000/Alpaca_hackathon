@@ -72,4 +72,37 @@ describe('AgentActivity Component (P3-FE-3, P3-FE-4)', () => {
     expect(screen.getByTestId('agent-activity-error')).toBeInTheDocument();
     expect(screen.getByText(/Failed to stream agent telemetry/i)).toBeInTheDocument();
   });
+
+  it('streaming: appends events dynamically preserving chronological order (P6-FE-2)', () => {
+    const initialRuns = [
+      {
+        id: 'stream-01',
+        cycle_id: 'cyc-stream',
+        agent_name: 'Portfolio Analysis Agent',
+        status: 'completed' as const,
+        started_at: '2026-09-03T14:30:00.000Z',
+        duration_ms: 80,
+      },
+    ];
+
+    const { rerender } = render(<AgentActivity runs={initialRuns} />);
+    expect(screen.getByTestId('agent-runs-count')).toHaveTextContent('1 AGENT PASS');
+
+    // Simulate streaming in new agent run
+    const streamedRuns = [
+      ...initialRuns,
+      {
+        id: 'stream-02',
+        cycle_id: 'cyc-stream',
+        agent_name: 'Risk Gate Agent',
+        status: 'running' as const,
+        started_at: '2026-09-03T14:30:00.150Z',
+      },
+    ];
+
+    rerender(<AgentActivity runs={streamedRuns} />);
+    expect(screen.getByTestId('agent-runs-count')).toHaveTextContent('2 AGENT PASSES');
+    expect(screen.getByTestId('agent-run-item-stream-02')).toHaveTextContent(/Risk Gate Agent/i);
+    expect(screen.getByTestId('status-running')).toBeInTheDocument();
+  });
 });

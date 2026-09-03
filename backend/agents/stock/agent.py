@@ -22,6 +22,7 @@ from pydantic import Field
 
 from backend.agents.base import AgentError, complete_json
 from backend.agents.context_builder import AgentContextSlice
+from backend.agents.prompts import render as render_prompt
 from backend.models.common import Contract
 from backend.models.hedge_context import StockView
 
@@ -32,12 +33,6 @@ _PRICE_DP = 2
 _NO_DATA_NOTE = "no market data available"
 _NOTE_MAX_CHARS = 120
 _HIGH_VOL = 0.30
-
-_SYSTEM = (
-    "You are a risk analyst. For each holding, write a risk note of at most 12 "
-    "words covering volatility and momentum. Reply with JSON "
-    '{"notes": {"<SYMBOL>": "<note>", ...}} and nothing else.'
-)
 
 
 class _Bar(Contract):
@@ -109,8 +104,9 @@ def _llm_notes(
         }
         for h in holdings
     ]
+    prompt = render_prompt("stock", payload=str(payload))
     try:
-        raw = complete_json(_SYSTEM, str(payload), client=client)
+        raw = complete_json(prompt.system, prompt.user, client=client)
     except AgentError:
         return {}
     notes = raw.get("notes")

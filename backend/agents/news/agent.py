@@ -21,6 +21,7 @@ from pydantic import Field
 
 from backend.agents.base import AgentError, complete_json
 from backend.agents.context_builder import AgentContextSlice
+from backend.agents.prompts import render as render_prompt
 from backend.models.common import Contract
 from backend.models.hedge_context import NewsItem
 
@@ -29,14 +30,6 @@ __all__ = ["NewsAgentInput", "analyze_news"]
 _SENTIMENT_MIN = -1.0
 _SENTIMENT_MAX = 1.0
 _BODY_EXCERPT_CHARS = 280
-
-_SYSTEM = (
-    "You triage financial news. For each article decide: is_event (true only for "
-    "a material corporate or market event, not a routine headline), sentiment "
-    "(number from -1 to 1) and symbols (tickers materially affected). Reply with "
-    'JSON {"verdicts": [{"index": <int>, "is_event": <bool>, "sentiment": '
-    "<number>, \"symbols\": [<ticker>, ...]}]} and nothing else."
-)
 
 
 class _RawArticle(Contract):
@@ -74,8 +67,9 @@ def _verdicts_by_index(
         }
         for i, art in enumerate(articles)
     ]
+    prompt = render_prompt("news", payload=str(payload))
     try:
-        raw = complete_json(_SYSTEM, str(payload), client=client)
+        raw = complete_json(prompt.system, prompt.user, client=client)
     except AgentError:
         return {}
     verdicts = raw.get("verdicts")

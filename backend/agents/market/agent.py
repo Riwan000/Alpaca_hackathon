@@ -20,6 +20,7 @@ from pydantic import Field
 
 from backend.agents.base import AgentError, complete_json
 from backend.agents.context_builder import AgentContextSlice
+from backend.agents.prompts import render as render_prompt
 from backend.models.common import Contract
 from backend.models.enums import MarketRegime
 from backend.models.hedge_context import MarketState
@@ -28,12 +29,6 @@ __all__ = ["MarketAgentInput", "analyze_market"]
 
 _HIGH_VOL_VIX = 28.0
 _RISK_OFF_VIX = 20.0
-
-_SYSTEM = (
-    "You classify the equity-market regime from a short environment summary. "
-    "Reply with JSON {\"regime\": \"<one of RISK_ON, NEUTRAL, RISK_OFF, HIGH_VOL>\"} "
-    "and nothing else."
-)
 
 
 class _MarketDataView(Contract):
@@ -72,8 +67,9 @@ def _llm_regime(view: _MarketDataView, client: OpenAI | None) -> MarketRegime | 
         "sector_trends": view.sector_trends,
         "macro_notes": view.macro_notes,
     }
+    prompt = render_prompt("market", summary=str(summary))
     try:
-        raw = complete_json(_SYSTEM, str(summary), client=client)
+        raw = complete_json(prompt.system, prompt.user, client=client)
     except AgentError:
         return None
     try:

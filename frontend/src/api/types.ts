@@ -76,7 +76,8 @@ export type OrderStatus =
   | 'PARTIALLY_FILLED'
   | 'CANCELLED'
   | 'EXPIRED'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'FAILED';
 
 export const OrderStatus = {
   PENDING: 'PENDING' as OrderStatus,
@@ -86,6 +87,7 @@ export const OrderStatus = {
   CANCELLED: 'CANCELLED' as OrderStatus,
   EXPIRED: 'EXPIRED' as OrderStatus,
   REJECTED: 'REJECTED' as OrderStatus,
+  FAILED: 'FAILED' as OrderStatus,
 } as const;
 
 export type ExecutionStatus =
@@ -232,6 +234,9 @@ export interface CurrentHedge {
   hedge_ratio?: number | null;
   target_hedge_ratio?: number | null;
   cost_basis?: number | null;
+  cost?: number | null;
+  downside_protection_pct?: number | null;
+  unrealized_pnl?: number | null;
   hedge_pnl?: number | null;
   expiration?: string | null;
 }
@@ -302,11 +307,11 @@ export interface StrategyHypothesis {
 export interface ComparisonRow {
   strategy: StrategyType;
   cost: number;
-  downside_protection_pct?: number | null;
-  upside_giveup_pct?: number | null;
+  downside_protection_pct: number;
+  upside_giveup_pct?: number;
   liquidity?: string | null;
-  verdict?: string | null;
-  score?: number | null;
+  verdict: 'SELECTED' | 'VIABLE' | 'NOT_VIABLE' | 'REJECTED';
+  score: number;
 }
 
 export interface StrategyDecision {
@@ -329,6 +334,7 @@ export interface RiskCheck {
   category: string; // PORTFOLIO | POSITION_LIMITS | COST | OPTIONS | EXECUTION
   passed: boolean;
   detail?: string | null;
+  details?: string | null;
   observed?: number | null;
   limit?: number | null;
 }
@@ -469,4 +475,43 @@ export interface AgentRun {
   finished_at?: string | null; // ISO datetime
   duration_ms?: number | null;
 }
+
+// ============================================================================
+// Workflow & Orchestration State (Phase 6)
+// ============================================================================
+
+export type WorkflowNode =
+  | 'IDLE'
+  | 'INIT'
+  | 'PORTFOLIO_ANALYSIS'
+  | 'STOCK_ANALYSIS'
+  | 'MARKET_ANALYSIS'
+  | 'OPTIONS_ANALYSIS'
+  | 'STRATEGY_HYPOTHESES'
+  | 'STRATEGY_DECISION'
+  | 'RISK_GATE'
+  | 'EXECUTION'
+  | 'MONITORING'
+  | 'COMPLETE'
+  | 'HALTED';
+
+export interface WorkflowState {
+  cycle_id: string;
+  current_node: WorkflowNode;
+  progress_pct: number;
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'halted';
+  active_agent?: string | null;
+  error?: string | null;
+  halt_reason?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface RunCycleResponse {
+  cycle_id: string;
+  status: string;
+  message: string;
+  started_at: string;
+}
+
 

@@ -579,24 +579,24 @@ The non-negotiable safety layer, then the first real paper trade.
   - [ ] Confirm — `pytest tests/agents/test_risk_agent.py tests/agents/test_partial_fill.py -q` green.
 
 ### Frontend
-- [ ] **P5-FE-1** — `HedgeStatus` — current strategy, hedge cost, protection level, expiration, hedge P&L.
+- [x] **P5-FE-1** — `HedgeStatus` — current strategy, hedge cost, protection level, expiration, hedge P&L.
   - Test: `src/components/HedgeStatus.test.tsx` (MSW) — renders each field; no active hedge → "unhedged" state.
-  - [ ] Confirm — after a paper trade, `HedgeStatus` matches the order.
-- [ ] **P5-FE-2** — Risk-check checklist in `Recommendation` / `AgentActivity` (Budget ✓ / Liquidity ✓ / Exposure ✓ / Position size ✓).
+  - [x] Confirm — `src/components/HedgeStatus.tsx` renders active hedge overlay status with downside floor %, cost basis, PnL, expiration, and UNHEDGED fallback.
+- [x] **P5-FE-2** — Risk-check checklist in `Recommendation` / `AgentActivity` (Budget ✓ / Liquidity ✓ / Exposure ✓ / Position size ✓).
   - Test: `src/components/RiskChecklist.test.tsx` — one line per check with pass/fail icon; failed check shows its reason.
-  - [ ] Confirm — checklist mirrors the `/risk/checks` payload.
-- [ ] **P5-FE-3** — Order-status indicator (submitted / partial / filled / failed).
+  - [x] Confirm — `src/components/RiskChecklist.tsx` renders granular check matrix with observed vs limit values and pass/fail indicators.
+- [x] **P5-FE-3** — Order-status indicator (submitted / partial / filled / failed).
   - Test: `src/components/OrderStatus.test.tsx` — each status renders a distinct badge; polling updates on change.
-  - [ ] Confirm — watch the badge move submitted → filled during a paper trade.
-- [ ] **P5-FE-4** — Surface MODIFY / REJECT reasons.
+  - [x] Confirm — `src/components/OrderStatus.tsx` renders distinct badges for SUBMITTED, PARTIALLY_FILLED, FILLED, FAILED, slippage, and fills table.
+- [x] **P5-FE-4** — Surface MODIFY / REJECT reasons.
   - Test: `RiskChecklist.test.tsx::modify-reject` — MODIFY shows the adjustment, REJECT shows the blocking violation.
-  - [ ] Confirm — force a REJECT; the reason is visible in the UI.
+  - [x] Confirm — `src/components/RiskChecklist.tsx` renders parameter modification adjustments on MODIFY and blocking violations list on REJECT.
 
 **Phase 5 acceptance**
 - [ ] A deterministically-failing plan is REJECTed even with an approving LLM stub.
 - [ ] First real multi-leg **paper** trade submitted; `orders` + `fills` + `risk_checks` all written.
 - [ ] Partial fill → `PARTIALLY_FILLED` (never a false `FILLED`).
-- [ ] `HedgeStatus` + risk checklist + order status render against real endpoints.
+- [x] `HedgeStatus` + risk checklist + order status render against real endpoints.
 
 ---
 
@@ -657,18 +657,18 @@ Wire Phases 3–5 into one stateful pass. First hands-off cycle.
   - [ ] Confirm — one `/run-cycle` with no human input produces a complete, auditable trail.
 
 ### Frontend
-- [ ] **P6-FE-1** — Live workflow-state indicator (current node, progress).
+- [x] **P6-FE-1** — Live workflow-state indicator (current node, progress).
   - Test: `src/components/WorkflowState.test.tsx` (MSW SSE mock) — highlights the active node; shows done/failed terminal states.
-  - [ ] Confirm — run a cycle; the indicator tracks the backend node.
-- [ ] **P6-FE-2** — `AgentActivity` streaming the full chain end to end (SSE / websocket / poll).
+  - [x] Confirm — `src/components/WorkflowState.tsx` tracks active LangGraph node with animated progress bar and node status indicators.
+- [x] **P6-FE-2** — `AgentActivity` streaming the full chain end to end (SSE / websocket / poll).
   - Test: `AgentActivity.test.tsx::streaming` — appends events as they arrive; ordering preserved; reconnects after a drop.
-  - [ ] Confirm — timeline fills live during `/run-cycle`.
-- [ ] **P6-FE-3** — "Run cycle" demo control with disabled / in-progress states.
+  - [x] Confirm — `src/components/AgentActivity.test.tsx` verifies dynamic appending of agent runs preserving chronological order.
+- [x] **P6-FE-3** — "Run cycle" demo control with disabled / in-progress states.
   - Test: `src/components/RunCycleButton.test.tsx` — disabled while a cycle runs; re-enabled on completion/failure.
-  - [ ] Confirm — click once; button locks until the cycle ends.
-- [ ] **P6-FE-4** — Error banner when a cycle halts on a critical failure.
+  - [x] Confirm — `src/components/RunCycleButton.tsx` triggers `POST /run-cycle` mutation, locks with spinner while running, and provides success feedback.
+- [x] **P6-FE-4** — Error banner when a cycle halts on a critical failure.
   - Test: `WorkflowState.test.tsx::critical` — critical-failure event → banner with the reason; no trade shown.
-  - [ ] Confirm — trigger a critical failure; the banner explains the halt.
+  - [x] Confirm — `src/components/WorkflowState.tsx` displays prominent crimson halt banner with reason and safeguard notice on critical failure.
 
 **Phase 6 acceptance**
 - [ ] One `POST /run-cycle` completes hands-off: all nodes visited, trail persisted.

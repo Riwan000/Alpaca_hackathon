@@ -31,6 +31,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from backend.agents.prompts import render as render_prompt
 from backend.llm.provider import get_llm_client, resolve_model
 from backend.models.enums import DecisionType, HedgeAction, StrategyType
 from backend.models.hedge_context import HedgeContext
@@ -49,22 +50,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # prompt template (Stage 3)
 # ---------------------------------------------------------------------------
+#
+# The system prompt and the closing instruction live in
+# ``backend/agents/prompts/templates.yaml`` under the ``manager`` key (P4-BE-10);
+# :func:`_build_context_block` produces the ``{context_block}`` the template wraps.
 
-_SYSTEM_PROMPT = """\
-You are a quantitative portfolio risk manager selecting the best hedging strategy
-for a client's equity portfolio. You will be given:
-  - The portfolio context (drawdown, volatility, regime).
-  - A comparison table of viable hedging strategies with their key metrics.
-  - Strategies that were rejected and why.
-
-Respond with a JSON object containing EXACTLY these keys:
-  "decision": one of "SELECT_STRATEGY", "NO_TRADE", or "REASSESS"
-  "selected_strategy": the strategy name if decision is SELECT_STRATEGY, else null
-  "rationale": a concise 2-3 sentence explanation citing the winning metric
-  "confidence": a float 0.0-1.0 indicating your confidence in this decision
-
-Return ONLY the JSON object — no markdown, no preamble.
-"""
+_MANAGER_TEMPLATE = "manager"
 
 _LOW_CONFIDENCE_THRESHOLD: float = 0.5
 
@@ -74,13 +65,17 @@ _FALLBACK_RATIONALE_PREFIX = (
 )
 
 
-def _build_user_prompt(
+def _build_context_block(
     context: HedgeContext,
     viable: list[StrategyHypothesis],
     comparison: list[ComparisonRow],
     not_viable: list[StrategyHypothesis],
 ) -> str:
-    """Build the user-turn prompt for the LLM selection call."""
+    """Render the ``{context_block}`` the ``manager`` template wraps.
+
+    The portfolio context, comparison table, rejected strategies and per-strategy
+    rationales; the decision instruction itself is in ``templates.yaml``.
+    """
     portfolio = context.portfolio_state
     objective = context.objective
 
@@ -122,12 +117,7 @@ def _build_user_prompt(
     parts.append("=== Strategy Rationales ===")
     for h in viable:
         parts.append(f"  [{h.strategy.value}] {h.rationale}")
-    parts.append("")
 
-    parts.append(
-        "Select the best strategy or decide NO_TRADE / REASSESS. "
-        "Respond with the JSON object only."
-    )
     return "\n".join(parts)
 
 
@@ -573,15 +563,13 @@ class StrategyManager:
                 raise RuntimeError("no LLM API key configured")
             client = get_llm_client()
 
-        user_msg = _build_user_prompt(context, viable, comparison, not_viable)
+        context_block = _build_context_block(context, viable, comparison, not_viable)
+        prompt = render_prompt(_MANAGER_TEMPLATE, context_block=context_block)
         model = resolve_model("fast")
 
         completion = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
+            messages=prompt.messages,
             temperature=0,
             max_tokens=512,
         )

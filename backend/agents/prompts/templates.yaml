@@ -1,0 +1,95 @@
+# Prompt templates for the LLM-backed agents and the Strategy Manager (P4-BE-10).
+#
+# Each entry:
+#   description  - human summary of what the call does
+#   model_alias  - logical alias handed to the LLM provider ("fast" / "reasoning")
+#   max_tokens   - budget for the RENDERED prompt (system + user), estimated at
+#                  ~4 chars/token and enforced by tests/agents/test_prompts.py
+#   system       - system-turn text; {placeholders} filled by prompts.render()
+#   user         - user-turn text; literal braces MUST be doubled ({{ and }})
+#   sample       - kwargs the test renders the template with
+#
+# The Portfolio and Options agents are fully deterministic (no LLM) and have no
+# template here by design.
+
+stock:
+  description: Batched per-holding risk note (Stock Analysis Agent, P3-BE-6).
+  model_alias: fast
+  max_tokens: 600
+  system: >-
+    You are a risk analyst. For each holding, write a risk note of at most 12
+    words covering volatility and momentum. Reply with JSON
+    {{"notes": {{"<SYMBOL>": "<note>", ...}}}} and nothing else.
+  user: |-
+    {payload}
+  sample:
+    payload: "[{'symbol': 'AAPL', 'momentum': 0.021, 'realized_vol': 0.28}, {'symbol': 'MSFT', 'momentum': -0.004, 'realized_vol': 0.19}]"
+
+market:
+  description: Single-token equity-market regime classification (Market Agent, P3-BE-7).
+  model_alias: fast
+  max_tokens: 500
+  system: >-
+    You classify the equity-market regime from a short environment summary.
+    Reply with JSON {{"regime": "<one of RISK_ON, NEUTRAL, RISK_OFF, HIGH_VOL>"}}
+    and nothing else.
+  user: |-
+    {summary}
+  sample:
+    summary: "{'index_trend': 'DOWN', 'vix': 24.1, 'sector_trends': {'tech': 'DOWN'}, 'macro_notes': ['CPI hotter than expected']}"
+
+news:
+  description: Batched news triage - event flag, sentiment, affected tickers (News Agent, P3-BE-8).
+  model_alias: fast
+  max_tokens: 2000
+  system: >-
+    You triage financial news. For each article decide: is_event (true only for
+    a material corporate or market event, not a routine headline), sentiment
+    (number from -1 to 1) and symbols (tickers materially affected). Reply with
+    JSON {{"verdicts": [{{"index": <int>, "is_event": <bool>, "sentiment":
+    <number>, "symbols": [<ticker>, ...]}}]}} and nothing else.
+  user: |-
+    {payload}
+  sample:
+    payload: "[{'index': 0, 'headline': 'Chipmaker cuts full-year guidance', 'body': 'The company said demand softened...', 'symbols': ['NVDA']}, {'index': 1, 'headline': 'Markets drift into the close', 'body': 'Stocks were little changed...', 'symbols': []}]"
+
+manager:
+  description: Strategy Manager stage-3 selection - best hedge or NO_TRADE / REASSESS (P4-BE-9).
+  model_alias: fast
+  max_tokens: 1400
+  system: |
+    You are a quantitative portfolio risk manager selecting the best hedging strategy
+    for a client's equity portfolio. You will be given:
+      - The portfolio context (drawdown, volatility, regime).
+      - A comparison table of viable hedging strategies with their key metrics.
+      - Strategies that were rejected and why.
+
+    Respond with a JSON object containing EXACTLY these keys:
+      "decision": one of "SELECT_STRATEGY", "NO_TRADE", or "REASSESS"
+      "selected_strategy": the strategy name if decision is SELECT_STRATEGY, else null
+      "rationale": a concise 2-3 sentence explanation citing the winning metric
+      "confidence": a float 0.0-1.0 indicating your confidence in this decision
+
+    Return ONLY the JSON object - no markdown, no preamble.
+  user: |-
+    {context_block}
+
+    Select the best strategy or decide NO_TRADE / REASSESS.
+    Respond with the JSON object only.
+  sample:
+    context_block: |-
+      === Portfolio Context ===
+      Total value:  $100,000
+      Drawdown:     4.6%
+      Volatility:   18.0%
+      Market regime: RISK_OFF
+      Drawdown tolerance: 10.0%
+      Hedge budget (max): 2.0% of portfolio
+
+      === Viable Strategies (comparison table) ===
+        strategy=PROTECTIVE_PUT | cost=$315 | downside_protection=92.0% | liquidity=high
+        strategy=NO_HEDGE | cost=$0
+
+      === Strategy Rationales ===
+        [PROTECTIVE_PUT] Buys the AAPL 145 put, floors the covered position near -$8,315.
+        [NO_HEDGE] drawdown 4.6% is within the 10.0% tolerance.

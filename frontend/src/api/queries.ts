@@ -12,7 +12,7 @@
  * - `useHealth`: Fetches service health and build info
  */
 
-import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from './client';
 import type {
   HedgeContext,
@@ -25,6 +25,8 @@ import type {
   MonitoringState,
   HealthResponse,
   AgentRun,
+  WorkflowState,
+  RunCycleResponse,
 } from './types';
 
 export const queryKeys = {
@@ -35,10 +37,13 @@ export const queryKeys = {
   strategy: (cycleId?: string) => ['strategy', cycleId ?? 'latest'] as const,
   strategyHypotheses: (cycleId?: string) => ['strategy', 'hypotheses', cycleId ?? 'latest'] as const,
   strategyHypothesis: (id?: string) => ['strategy', 'hypothesis', id ?? 'selected'] as const,
-  risk: ['risk'] as const,
+  risk: (cycleId?: string) => ['risk', cycleId ?? 'latest'] as const,
+  riskChecks: (cycleId?: string) => ['risk', 'checks', cycleId ?? 'latest'] as const,
   executionPlan: ['execution', 'plan'] as const,
-  executionResult: ['execution', 'result'] as const,
+  executionResult: (cycleId?: string) => ['execution', 'result', cycleId ?? 'latest'] as const,
+  orders: (cycleId?: string) => ['orders', cycleId ?? 'latest'] as const,
   monitoring: ['monitoring'] as const,
+  workflow: (cycleId?: string) => ['workflow', cycleId ?? 'latest'] as const,
 };
 
 export function useHedgeContext(
@@ -126,11 +131,29 @@ export function useStrategyHypothesis(
 }
 
 export function useRiskDecision(
+  cycleId?: string,
   options?: Partial<UseQueryOptions<RiskDecision, Error>>
 ) {
   return useQuery<RiskDecision, Error>({
-    queryKey: queryKeys.risk,
-    queryFn: () => apiClient.get<RiskDecision>('/risk'),
+    queryKey: queryKeys.risk(cycleId),
+    queryFn: () =>
+      apiClient.get<RiskDecision>(
+        cycleId ? `/risk?cycle_id=${encodeURIComponent(cycleId)}` : '/risk'
+      ),
+    ...options,
+  });
+}
+
+export function useRiskChecks(
+  cycleId?: string,
+  options?: Partial<UseQueryOptions<RiskDecision, Error>>
+) {
+  return useQuery<RiskDecision, Error>({
+    queryKey: queryKeys.riskChecks(cycleId),
+    queryFn: () =>
+      apiClient.get<RiskDecision>(
+        cycleId ? `/risk/checks?cycle_id=${encodeURIComponent(cycleId)}` : '/risk/checks'
+      ),
     ...options,
   });
 }
@@ -146,11 +169,29 @@ export function useExecutionPlan(
 }
 
 export function useExecutionResult(
+  cycleId?: string,
   options?: Partial<UseQueryOptions<ExecutionResult, Error>>
 ) {
   return useQuery<ExecutionResult, Error>({
-    queryKey: queryKeys.executionResult,
-    queryFn: () => apiClient.get<ExecutionResult>('/execution'),
+    queryKey: queryKeys.executionResult(cycleId),
+    queryFn: () =>
+      apiClient.get<ExecutionResult>(
+        cycleId ? `/execution?cycle_id=${encodeURIComponent(cycleId)}` : '/execution'
+      ),
+    ...options,
+  });
+}
+
+export function useOrders(
+  cycleId?: string,
+  options?: Partial<UseQueryOptions<ExecutionResult, Error>>
+) {
+  return useQuery<ExecutionResult, Error>({
+    queryKey: queryKeys.orders(cycleId),
+    queryFn: () =>
+      apiClient.get<ExecutionResult>(
+        cycleId ? `/orders?cycle_id=${encodeURIComponent(cycleId)}` : '/orders'
+      ),
     ...options,
   });
 }
@@ -165,6 +206,30 @@ export function useMonitoringState(
   });
 }
 
+export function useWorkflowState(
+  cycleId?: string,
+  options?: Partial<UseQueryOptions<WorkflowState, Error>>
+) {
+  return useQuery<WorkflowState, Error>({
+    queryKey: queryKeys.workflow(cycleId),
+    queryFn: () =>
+      apiClient.get<WorkflowState>(
+        cycleId ? `/workflow/state?cycle_id=${encodeURIComponent(cycleId)}` : '/workflow/state'
+      ),
+    refetchInterval: 3000,
+    ...options,
+  });
+}
+
+export function useTriggerRunCycle(
+  options?: UseMutationOptions<RunCycleResponse, Error, { force?: boolean } | void>
+) {
+  return useMutation<RunCycleResponse, Error, { force?: boolean } | void>({
+    mutationFn: (vars) => apiClient.post<RunCycleResponse>('/run-cycle', vars ?? {}),
+    ...options,
+  });
+}
+
 export function useHealth(
   options?: Partial<UseQueryOptions<HealthResponse, Error>>
 ) {
@@ -174,4 +239,5 @@ export function useHealth(
     ...options,
   });
 }
+
 

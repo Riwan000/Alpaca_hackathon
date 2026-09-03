@@ -8,12 +8,20 @@ import {
   useAgentRuns,
   useMonitoringState,
   usePortfolioLatest,
+  useWorkflowState,
+  useRiskChecks,
+  useExecutionResult,
 } from '../api/queries';
 import { PortfolioOverview } from '../components/PortfolioOverview';
 import { RiskOverview } from '../components/RiskOverview';
 import { Recommendation } from '../components/Recommendation';
 import { StrategyComparison } from '../components/StrategyComparison';
 import { AgentActivity } from '../components/AgentActivity';
+import { HedgeStatus } from '../components/HedgeStatus';
+import { RiskChecklist } from '../components/RiskChecklist';
+import { OrderStatus } from '../components/OrderStatus';
+import { WorkflowState } from '../components/WorkflowState';
+import { RunCycleButton } from '../components/RunCycleButton';
 
 export const DashboardPage: React.FC = () => {
   const contextQuery = useHedgeContext();
@@ -22,18 +30,23 @@ export const DashboardPage: React.FC = () => {
   const hypothesesQuery = useStrategyHypotheses();
   const agentRunsQuery = useAgentRuns();
   const monitoringQuery = useMonitoringState();
+  const workflowQuery = useWorkflowState();
+  const riskChecksQuery = useRiskChecks();
+  const executionQuery = useExecutionResult();
 
   const isLoading =
     contextQuery.isLoading ||
     strategyQuery.isLoading ||
     monitoringQuery.isLoading ||
     hypothesesQuery.isLoading ||
-    agentRunsQuery.isLoading;
+    agentRunsQuery.isLoading ||
+    workflowQuery.isLoading;
 
   const error =
     contextQuery.error ||
     strategyQuery.error ||
-    monitoringQuery.error;
+    monitoringQuery.error ||
+    workflowQuery.error;
 
   const context = contextQuery.data;
   const portfolio = portfolioQuery.data || context?.portfolio_state;
@@ -47,6 +60,9 @@ export const DashboardPage: React.FC = () => {
     : hypotheses;
 
   const agentRuns = agentRunsQuery.data || [];
+  const workflow = workflowQuery.data;
+  const riskDecision = riskChecksQuery.data;
+  const executionResult = executionQuery.data;
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
@@ -76,7 +92,8 @@ export const DashboardPage: React.FC = () => {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-3">
           {isLoading && (
             <span
               className="flex items-center gap-1 text-xs font-mono text-[var(--text-muted)]"
@@ -86,6 +103,14 @@ export const DashboardPage: React.FC = () => {
               Syncing Feed...
             </span>
           )}
+          {/* Phase 6: Run Cycle Demo Control */}
+          <RunCycleButton
+            isRunning={workflow?.status === 'running'}
+            onCycleTriggered={() => {
+              workflowQuery.refetch();
+              agentRunsQuery.refetch();
+            }}
+          />
           <Link
             to={`/strategy/${context?.cycle_id || 'cyc-001'}`}
             className="px-3 py-2 bg-[var(--brand-spruce)] text-white text-xs font-mono font-medium flex items-center gap-1 hover:bg-[#143225] transition-colors"
@@ -106,6 +131,13 @@ export const DashboardPage: React.FC = () => {
           <span>Error loading pipeline feed: {error.message}</span>
         </div>
       )}
+
+      {/* Phase 6: Live Workflow Orchestration State */}
+      <WorkflowState
+        workflow={workflow}
+        isLoading={workflowQuery.isLoading}
+        error={workflowQuery.error}
+      />
 
       {/* Market Bar */}
       {context?.market_state && (
@@ -139,12 +171,24 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Phase 3: Risk Overview Tiles */}
-      <RiskOverview
-        portfolio={portfolio}
-        isLoading={contextQuery.isLoading}
-        error={contextQuery.error}
-      />
+      {/* Phase 5: Hedge Status (Active vs Unhedged) & Phase 3: Risk Overview Tiles */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5">
+          <HedgeStatus
+            currentHedge={context?.current_hedge}
+            activeHypothesis={strategy?.selected_hypothesis}
+            isLoading={contextQuery.isLoading}
+            error={contextQuery.error}
+          />
+        </div>
+        <div className="lg:col-span-7">
+          <RiskOverview
+            portfolio={portfolio}
+            isLoading={contextQuery.isLoading}
+            error={contextQuery.error}
+          />
+        </div>
+      </div>
 
       {/* Phase 4: Recommendation Panel */}
       <Recommendation
@@ -155,6 +199,13 @@ export const DashboardPage: React.FC = () => {
         error={strategyQuery.error}
       />
 
+      {/* Phase 5: Quantitative Risk Gate Checks */}
+      <RiskChecklist
+        decision={riskDecision}
+        isLoading={riskChecksQuery.isLoading}
+        error={riskChecksQuery.error}
+      />
+
       {/* Phase 4: Strategy Hypotheses Side-by-Side Comparison */}
       <StrategyComparison
         hypotheses={allHypotheses}
@@ -162,6 +213,13 @@ export const DashboardPage: React.FC = () => {
         comparisonRows={strategy?.comparison}
         isLoading={hypothesesQuery.isLoading}
         error={hypothesesQuery.error}
+      />
+
+      {/* Phase 5: Broker Order Execution Status */}
+      <OrderStatus
+        result={executionResult}
+        isLoading={executionQuery.isLoading}
+        error={executionQuery.error}
       />
 
       {/* 2-Column Grid: Portfolio Overview (Holdings Table) & Agent Activity Timeline */}

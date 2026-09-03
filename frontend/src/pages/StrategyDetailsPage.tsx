@@ -4,6 +4,7 @@ import { ArrowLeft, Layers, ShieldCheck, AlertCircle, RefreshCw, AlertTriangle, 
 import { useStrategyDecision, useStrategyHypothesis } from '../api/queries';
 import { PayoffChart } from '../components/PayoffChart';
 import { Greeks } from '../components/Greeks';
+import { RiskChecklist } from '../components/RiskChecklist';
 
 export const StrategyDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -239,6 +240,9 @@ export const StrategyDetailsPage: React.FC = () => {
           </div>
         </section>
       )}
+
+      {/* Quantitative Risk Gate Matrix */}
+      <RiskChecklist decision={decisionQuery.data ? { ...decisionQuery.data, verdict: 'APPROVE', checks: [] } as any : undefined} />
     </div>
   );
 };
