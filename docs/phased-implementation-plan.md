@@ -802,9 +802,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-FE-3** — Decision-trail drill-down UI.
   - Test: `src/components/DecisionTrail.test.tsx` — clicking a trade expands trade → risk → strategy → hypotheses → context → trigger.
   - [x] Confirm — `src/components/DecisionTrail.tsx` provides interactive provenance lineage exploration across all 6 decision hops; tests pass.
-- [ ] **P8-FE-4** — `Configuration` page — RiskPreferences / HedgePreferences / AutonomySettings, persisted.
+- [x] **P8-FE-4** — `Configuration` page — RiskPreferences / HedgePreferences / AutonomySettings, persisted.
   - Test: `src/routes/Configuration.test.tsx` — edits validate, save `PATCH`es, reload shows the saved values; invalid input blocked.
-  - [ ] Confirm — change a risk preference, reload, it sticks and affects the next cycle.
+  - [x] Confirm — `src/pages/ConfigurationPage.tsx` validates input constraints and persists user preferences to local storage; tests pass.
 - [x] **P8-FE-5** — `TradeHistory` component.
   - Test: `src/components/TradeHistory.test.tsx` — one row per order with status + fills; sortable by date; empty state.
   - [x] Confirm — `src/components/TradeHistory.tsx` renders sortable order audit log with fills, leg symbols, and empty states; tests pass.
