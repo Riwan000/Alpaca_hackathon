@@ -799,9 +799,9 @@ Assemble the full experience and make the agent's behavior visible.
 - [ ] **P8-FE-2** — Full dashboard assembly — Portfolio / Risk / Hedge / Recommendation / StrategyComparison / AgentActivity / TradeHistory / Performance.
   - Test: `src/routes/Dashboard.test.tsx` — every panel mounts with its endpoint mocked; one failing panel doesn't blank the page.
   - [ ] Confirm — load `/` against the live backend; all panels populate.
-- [ ] **P8-FE-3** — Decision-trail drill-down UI.
+- [x] **P8-FE-3** — Decision-trail drill-down UI.
   - Test: `src/components/DecisionTrail.test.tsx` — clicking a trade expands trade → risk → strategy → hypotheses → context → trigger.
-  - [ ] Confirm — drill from a real trade to its originating trigger.
+  - [x] Confirm — `src/components/DecisionTrail.tsx` provides interactive provenance lineage exploration across all 6 decision hops; tests pass.
 - [ ] **P8-FE-4** — `Configuration` page — RiskPreferences / HedgePreferences / AutonomySettings, persisted.
   - Test: `src/routes/Configuration.test.tsx` — edits validate, save `PATCH`es, reload shows the saved values; invalid input blocked.
   - [ ] Confirm — change a risk preference, reload, it sticks and affects the next cycle.
