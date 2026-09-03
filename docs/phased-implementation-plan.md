@@ -733,9 +733,9 @@ replaces, or removes protection rather than just accumulating puts.
   - [ ] Confirm — the end-to-end stabilization script reduces the hedge without human input.
 
 ### Frontend
-- [ ] **P7-FE-1** — Monitoring / triggers panel — active triggers + history.
+- [x] **P7-FE-1** — Monitoring / triggers panel — active triggers + history.
   - Test: `src/components/MonitoringPanel.test.tsx` (MSW) — lists active triggers; history ordered by `fired_at`; empty → "all clear".
-  - [ ] Confirm — panel matches `/monitoring/events`.
+  - [x] Confirm — `src/components/MonitoringPanel.tsx` renders active trigger badges, all-clear indicator, and ordered trigger event history; vitest suite passes.
 - [ ] **P7-FE-2** — Current-vs-target hedge-drift gauge.
   - Test: `src/components/HedgeDriftGauge.test.tsx` — needle at current, marker at target; inside deadband styled calm, outside styled alert.
   - [ ] Confirm — gauge matches `current_hedge` vs `target_hedge` from state.

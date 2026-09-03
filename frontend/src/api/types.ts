@@ -514,4 +514,40 @@ export interface RunCycleResponse {
   started_at: string;
 }
 
+// ============================================================================
+// Monitoring Events, Reassessment, and Hedge Changes (Phase 7)
+// ============================================================================
+
+export interface MonitoringEvent {
+  id: number;
+  cycle_id: string;
+  trigger_type: string;
+  observed?: Record<string, unknown> | null;
+  threshold?: number | null;
+  fired_at: string;
+}
+
+export interface ReassessmentEvent {
+  id: number;
+  cycle_id: string;
+  trigger_event_id?: number | null;
+  outcome: string;
+  reason: string;
+  context?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface HedgeChange {
+  id: number;
+  cycle_id: string;
+  reassessment_id?: number | null;
+  before_hedge_ratio: number;
+  after_hedge_ratio: number;
+  delta: number;
+  action: string;
+  reason: string;
+  detail?: Record<string, unknown> | null;
+  created_at: string;
+}
+
 
