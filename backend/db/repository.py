@@ -1,13 +1,16 @@
-"""Synchronous persistence seam over the Alembic-managed schema — task P2-DB-1.
+"""Synchronous persistence seam over the Alembic-managed schema — tasks P2-DB-1, P3-DB-2.
 
 Phase 2's quant engine is pure (no I/O). The only thing it needs from the
 database is a way to round-trip a *computed* portfolio snapshot: compute a
-metric set, ``save`` it, read it back unchanged. This module provides exactly
-that seam and nothing more.
+metric set, ``save`` it, read it back unchanged (:meth:`~PortfolioSnapshotRepository.save`).
 
-Phase 3 (P3-DB-2 / P3-DB-3) grows this into the full async snapshot + positions
-repository that also carries the risk-metric columns; see
-``docs/adr/0001-risk-metrics-storage.md`` for why those metrics land on
+Phase 3 (P3-DB-2) adds the write path each analysis pass actually uses:
+:meth:`~PortfolioSnapshotRepository.save_with_positions` persists the snapshot
+row **and its N position rows in a single transaction** — a bad position rolls
+the snapshot back with it, so a half-written pass never lands.
+
+P3-DB-3 will grow ``portfolio_snapshots`` with the computed risk-metric columns;
+see ``docs/adr/0001-risk-metrics-storage.md`` for why those metrics land on
 ``portfolio_snapshots`` rather than a dedicated table.
 """
 
@@ -16,11 +19,13 @@ from __future__ import annotations
 import dataclasses
 import datetime as _dt
 import decimal
+from collections.abc import Sequence
 
 from sqlalchemy import MetaData, RowMapping, Table, func, insert, select
 from sqlalchemy.engine import Engine
 
 _TABLE_NAME = "portfolio_snapshots"
+_POSITIONS_TABLE_NAME = "positions"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -44,12 +49,43 @@ class PortfolioSnapshotRecord:
     id: int | None = None
 
 
+@dataclasses.dataclass(frozen=True)
+class PositionRecord:
+    """One ``positions`` row, part of a :class:`PortfolioSnapshotRecord`.
+
+    ``snapshot_id`` and ``id`` are assigned by
+    :meth:`PortfolioSnapshotRepository.save_with_positions` — construct the
+    record with just the market fields and let the repository bind it to the
+    snapshot it writes.
+    """
+
+    symbol: str
+    qty: decimal.Decimal
+    avg_price: decimal.Decimal
+    market_value: decimal.Decimal
+    asset_class: str
+    side: str
+    snapshot_id: int | None = None
+    id: int | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class SnapshotWithPositions:
+    """Result of :meth:`PortfolioSnapshotRepository.save_with_positions`."""
+
+    snapshot: PortfolioSnapshotRecord
+    positions: tuple[PositionRecord, ...]
+
+
 class PortfolioSnapshotRepository:
-    """CRUD-lite access to ``portfolio_snapshots`` over a plain (sync) Engine."""
+    """CRUD-lite access to ``portfolio_snapshots`` (+ its ``positions``) over a plain (sync) Engine."""
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
         self._table = Table(_TABLE_NAME, MetaData(), autoload_with=engine)
+        self._positions = Table(
+            _POSITIONS_TABLE_NAME, MetaData(), autoload_with=engine
+        )
 
     def save(self, record: PortfolioSnapshotRecord) -> PortfolioSnapshotRecord:
         """Insert ``record`` and return a copy carrying the assigned ``id``."""
@@ -66,6 +102,95 @@ class PortfolioSnapshotRepository:
             )
             new_id = int(result.inserted_primary_key[0])
         return dataclasses.replace(record, id=new_id)
+
+    def save_with_positions(
+        self,
+        snapshot: PortfolioSnapshotRecord,
+        positions: Sequence[PositionRecord],
+    ) -> SnapshotWithPositions:
+        """Persist ``snapshot`` and every row in ``positions`` in one transaction.
+
+        Task P3-DB-2: the write each analysis pass performs. The snapshot row and
+        all N position rows commit together or not at all — if any position row
+        fails (e.g. a missing ``symbol``), the whole transaction rolls back and
+        the snapshot never lands. Returns the saved snapshot and positions with
+        their assigned ``id`` / ``snapshot_id``, positions in input order.
+        """
+        with self._engine.begin() as conn:
+            if conn.dialect.name == "sqlite":
+                conn.exec_driver_sql("PRAGMA foreign_keys = ON;")
+
+            snap_id = int(
+                conn.execute(
+                    insert(self._table).values(
+                        cycle_id=snapshot.cycle_id,
+                        ts=snapshot.ts,
+                        total_value=snapshot.total_value,
+                        cash=snapshot.cash,
+                        equity=snapshot.equity,
+                        buying_power=snapshot.buying_power,
+                    )
+                ).inserted_primary_key[0]
+            )
+
+            saved_positions: list[PositionRecord] = []
+            for pos in positions:
+                pos_id = int(
+                    conn.execute(
+                        insert(self._positions).values(
+                            snapshot_id=snap_id,
+                            symbol=pos.symbol,
+                            qty=pos.qty,
+                            avg_price=pos.avg_price,
+                            market_value=pos.market_value,
+                            asset_class=pos.asset_class,
+                            side=pos.side,
+                        )
+                    ).inserted_primary_key[0]
+                )
+                saved_positions.append(
+                    dataclasses.replace(pos, snapshot_id=snap_id, id=pos_id)
+                )
+
+        return SnapshotWithPositions(
+            snapshot=dataclasses.replace(snapshot, id=snap_id),
+            positions=tuple(saved_positions),
+        )
+
+    def positions_for(self, snapshot_id: int) -> list[PositionRecord]:
+        """Positions belonging to ``snapshot_id``, in insertion (``id``) order."""
+        with self._engine.connect() as conn:
+            rows = (
+                conn.execute(
+                    select(self._positions)
+                    .where(self._positions.c.snapshot_id == snapshot_id)
+                    .order_by(self._positions.c.id.asc())
+                )
+                .mappings()
+                .all()
+            )
+        return [
+            PositionRecord(
+                symbol=row["symbol"],
+                qty=row["qty"],
+                avg_price=row["avg_price"],
+                market_value=row["market_value"],
+                asset_class=row["asset_class"],
+                side=row["side"],
+                snapshot_id=int(row["snapshot_id"]),
+                id=int(row["id"]),
+            )
+            for row in rows
+        ]
+
+    def count_positions(self) -> int:
+        """Number of rows currently in ``positions``."""
+        with self._engine.connect() as conn:
+            return int(
+                conn.execute(
+                    select(func.count()).select_from(self._positions)
+                ).scalar_one()
+            )
 
     def get(self, snapshot_id: int) -> PortfolioSnapshotRecord | None:
         """Return the snapshot with ``snapshot_id``, or ``None`` if absent."""

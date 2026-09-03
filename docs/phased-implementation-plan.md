@@ -325,9 +325,9 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 - [x] **P2-BE-22** — Unit tests: position sizing + risk limits (boundary cases). *(test task for P2-BE-14/15)*
   - Test: cases in P2-BE-14/15.
   - [x] Confirm — `pytest tests/quant/test_sizing.py tests/quant/test_risk_limits.py -q` green.
-- [ ] **P2-BE-23** — Coverage report ≥ 80% on `quant/`.
+- [x] **P2-BE-23** — Coverage report ≥ 80% on `quant/`.
   - Test: `pytest --cov=backend/quant --cov-fail-under=80`.
-  - [ ] Confirm — coverage summary line shows ≥ 80% and the command exits 0.
+  - [x] Confirm — `Required test coverage of 80% reached. Total coverage: 96.92%`, exit 0. CI enforces it as a dedicated "Quant coverage gate >= 80% (P2-BE-23)" step in `.github/workflows/ci.yml`.
 
 ### Frontend
 - [ ] **P2-FE-1** — `PayoffChart` skeleton rendering a curve from `{x, y}[]` mock data.
@@ -352,12 +352,12 @@ no LLM, no I/O. Everything downstream reasons about these numbers.
 Turn a live Alpaca portfolio into a standardized `HedgeContext`.
 
 ### DB
-- [ ] **P3-DB-1** — `agent_runs` repository: `create(run)`, `finish(id, outputs | error, duration_ms)`.
+- [x] **P3-DB-1** — `agent_runs` repository: `create(run)`, `finish(id, outputs | error, duration_ms)`.
   - Test: `tests/db/test_agent_runs_repo.py` — create → finish updates outputs + duration; finish-with-error stores the message, leaves outputs null.
-  - [ ] Confirm — run one analysis; `select agent_name, duration_ms from agent_runs` shows a row per agent.
-- [ ] **P3-DB-2** — `portfolio_snapshots` + `positions` repository: write on each analysis pass.
+  - [x] Confirm — `backend/db/agent_runs_repo.py`; `list_for_cycle` returns a row per agent in start order, each with a `duration_ms` (test `test_list_for_cycle_is_a_row_per_agent_in_start_order`). Live `select` re-check rides on the Phase 3 analysis pass (P3-BE-*).
+- [x] **P3-DB-2** — `portfolio_snapshots` + `positions` repository: write on each analysis pass.
   - Test: `tests/db/test_snapshot_repo.py` — save snapshot + N positions in one transaction; partial failure rolls back both.
-  - [ ] Confirm — after `/analyze`, one new snapshot row with the right position count.
+  - [x] Confirm — `PortfolioSnapshotRepository.save_with_positions` in `backend/db/repository.py`; a bad position rolls the snapshot back with it (test `test_partial_failure_rolls_back_snapshot_and_positions`). Live `/analyze` re-check rides on the Phase 3 analysis pass (P3-BE-*).
 - [ ] **P3-DB-3** — Persist computed risk metrics alongside the snapshot.
   - Test: `tests/db/test_snapshot_repo.py::test_metrics_saved` — volatility/beta/drawdown columns populated, not null.
   - [ ] Confirm — `select volatility, beta, drawdown from portfolio_snapshots order by ts desc limit 1` returns numbers.
