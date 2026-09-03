@@ -13,6 +13,12 @@ from __future__ import annotations
 from backend.agents.strategies.base import SelfRejection, StrategyAgent
 from backend.agents.strategies.collar import CollarAgent
 from backend.agents.strategies.no_hedge import NoHedgeAgent
+from backend.agents.strategies.prefilter import (
+    DroppedHypothesis,
+    PrefilterLimits,
+    PrefilterResult,
+    prefilter,
+)
 from backend.agents.strategies.protective_put import ProtectivePutAgent
 from backend.agents.strategies.put_spread import PutSpreadAgent
 
@@ -23,4 +29,8 @@ __all__ = [
     "PutSpreadAgent",
     "CollarAgent",
     "NoHedgeAgent",
+    "prefilter",
+    "PrefilterLimits",
+    "PrefilterResult",
+    "DroppedHypothesis",
 ]
