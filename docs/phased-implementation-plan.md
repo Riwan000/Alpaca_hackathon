@@ -369,18 +369,18 @@ Turn a live Alpaca portfolio into a standardized `HedgeContext`.
   - [x] Confirm — migration `0013_agent_runs_timeline_index` adds `ix_agent_runs_cycle_id_started_at`; `EXPLAIN QUERY PLAN` on the timeline query reports `SEARCH agent_runs USING INDEX ix_agent_runs_cycle_id_started_at` with no separate sort.
 
 ### Backend
-- [ ] **P3-BE-1** — `integrations/market_data/` client — spot prices, historical bars, index data.
+- [x] **P3-BE-1** — `integrations/market_data/` client — spot prices, historical bars, index data.
   - Test: `tests/integrations/test_market_data.py` — parses a recorded response into typed bars; upstream 5xx → typed error, no crash.
-  - [ ] Confirm — `pytest -m smoke` fetches SPY bars for the last 30 days.
-- [ ] **P3-BE-2** — `integrations/news/` client — fetch and normalize articles / events.
+  - [x] Confirm — `pytest -m smoke` fetches SPY bars for the last 30 days (21 daily bars, last close 2026-09-02).
+- [x] **P3-BE-2** — `integrations/news/` client — fetch and normalize articles / events.
   - Test: `tests/integrations/test_news.py` — recorded feed → normalized `{headline, ts, symbols, source}`; empty feed → `[]`.
-  - [ ] Confirm — `pytest -m smoke` returns ≥ 1 normalized article for a held symbol.
+  - [x] Confirm — `pytest -m smoke` returns ≥ 1 normalized article for a held symbol (10 for AAPL).
 - [ ] **P3-BE-3** — Alpaca option-chain access added to the Alpaca integration.
   - Test: `tests/integrations/test_alpaca_options.py` — recorded chain → strikes/expiries/greeks parsed; illiquid strike flagged.
   - [ ] Confirm — `pytest -m smoke` pulls a live chain for a held symbol; bid/ask present.
-- [ ] **P3-BE-4** — Context builder — hands each agent only task-relevant data (anti context-dilution, BRD §14).
+- [x] **P3-BE-4** — Context builder — hands each agent only task-relevant data (anti context-dilution, BRD §14).
   - Test: `tests/agents/test_context_builder.py` — each agent's slice contains its required keys and omits unrelated bulk (asserted by key set + size bound).
-  - [ ] Confirm — log the per-agent payload sizes; none carries the full portfolio blob.
+  - [x] Confirm — log the per-agent payload sizes; none carries the full portfolio blob.
 - [ ] **P3-BE-5** — Portfolio Analysis Agent — positions, exposure, concentration, drawdown → partial context.
   - Test: `tests/agents/test_portfolio_agent.py` (stubbed LLM) — output validates against the `HedgeContext` portfolio slice; numbers come from `quant/`, not the LLM.
   - [ ] Confirm — run it on the seed portfolio; exposure/drawdown match a hand check.
