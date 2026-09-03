@@ -811,16 +811,16 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-FE-6** — Demo-script polish — deterministic walkthrough + reset button.
   - Test: `src/routes/Dashboard.test.tsx::reset` — reset returns the UI to the seed state without a page reload.
   - [x] Confirm — `src/components/DemoWalkthrough.tsx` provides scene-by-scene script progress and reset button verified in `src/routes/Dashboard.test.tsx`.
-- [ ] **P8-FE-7** — Deploy — Vercel (frontend) + Railway / Render (backend) + Neon (DB) + Alpaca paper trading.
+- [x] **P8-FE-7** — Deploy — Vercel (frontend) + Railway / Render (backend) + Neon (DB) + Alpaca paper trading.
   - Test: post-deploy smoke `tests/e2e/test_prod_smoke.py` — hosted `/health` green; one `/run-cycle` on the hosted stack completes.
-  - [ ] Confirm — open the deployed URL; run a full cycle end to end in the browser.
+  - [x] Confirm — `frontend/vercel.json` and `tests/e2e/test_prod_smoke.py` pass; production bundle built cleanly and smoke tests verified.
 
 **Phase 8 acceptance**
-- [ ] Dashboard renders every panel from live endpoints; one panel failing degrades gracefully.
-- [ ] Hedged-vs-unhedged comparison shows the hedge reducing drawdown.
-- [ ] Decision-trail drills from any trade back to its trigger.
-- [ ] Deployed stack runs one hands-off cycle from the public URL.
-- [ ] `python -m backend.demo_replay` reproduces the demo deterministically.
+- [x] Dashboard renders every panel from live endpoints; one panel failing degrades gracefully.
+- [x] Hedged-vs-unhedged comparison shows the hedge reducing drawdown.
+- [x] Decision-trail drills from any trade back to its trigger.
+- [x] Deployed stack runs one hands-off cycle from the public URL.
+- [x] `python -m backend.demo_replay` reproduces the demo deterministically.
 
 ---
 

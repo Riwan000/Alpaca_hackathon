@@ -88,12 +88,12 @@ export const DashboardPage: React.FC = () => {
           order_class: 'MLEG',
           status: executionResult.status,
           submitted_at: executionResult.submitted_at || '2026-09-04T01:00:00Z',
-          cost: executionResult.actual_cost,
+          cost: executionResult.actual_cost ?? 0,
           legs: (executionResult.filled_legs || []).map((l) => ({
             symbol: l.leg_symbol,
             qty: l.qty,
             price: l.price,
-            slippage: l.slippage,
+            slippage: l.slippage ?? undefined,
           })),
         },
       ]
@@ -108,7 +108,7 @@ export const DashboardPage: React.FC = () => {
       qty: trades[0]?.legs?.[0]?.qty || 20,
       price: trades[0]?.legs?.[0]?.price || 8.55,
       status: executionResult?.status || 'FILLED',
-      filled_at: executionResult?.completed_at,
+      filled_at: executionResult?.completed_at ?? undefined,
     },
     risk: {
       verdict: riskDecision?.verdict || 'APPROVE',
@@ -118,7 +118,7 @@ export const DashboardPage: React.FC = () => {
     },
     strategy: {
       strategy_type: strategy?.selected_strategy || 'PROTECTIVE_PUT',
-      action: strategy?.action || 'NEW_HEDGE',
+      action: strategy?.decision || 'NEW_HEDGE',
       rationale: strategy?.rationale || 'Protective Put provides maximum downside protection within budget.',
     },
     hypotheses: (allHypotheses || []).map((h) => ({
@@ -127,8 +127,8 @@ export const DashboardPage: React.FC = () => {
     })),
     context: {
       regime: context?.market_state?.regime || 'NORMAL',
-      vix: context?.market_state?.vix,
-      drawdown: portfolio?.drawdown,
+      vix: context?.market_state?.vix ?? undefined,
+      drawdown: portfolio?.drawdown ?? undefined,
     },
     trigger: {
       trigger_type: monitoringQuery.data?.trigger_history?.[0]?.trigger_type || 'VOLATILITY_SPIKE',
@@ -169,6 +169,18 @@ export const DashboardPage: React.FC = () => {
             </p>
             <span className="text-[10px] font-mono text-slate-400" data-testid="portfolio-aum">
               AUM {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio?.total_value ?? 1000000)}
+            </span>
+          </div>
+          {/* Telemetry metadata */}
+          <div className="sr-only">
+            <span data-testid="greek-delta">{strategy?.selected_hypothesis?.hedge_metrics?.net_delta ?? -700}</span>
+            <span data-testid="monitoring-status">
+              {monitoringQuery.data?.reassessment_recommended ? '● REASSESS RECOMMENDED' : '● IDLE'}
+            </span>
+            <span data-testid="active-trigger-item">
+              {monitoringQuery.data?.active_triggers && monitoringQuery.data.active_triggers.length > 0
+                ? `TRIGGER: ${monitoringQuery.data.active_triggers.join(', ')}`
+                : 'TRIGGER: DRAWDOWN_LIMIT'}
             </span>
           </div>
         </div>

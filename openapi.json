@@ -2318,6 +2318,46 @@
         "title": "RiskVerdict",
         "type": "string"
       },
+      "RunCycleIn": {
+        "properties": {
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          }
+        },
+        "title": "RunCycleIn",
+        "type": "object"
+      },
+      "RunCycleOut": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "status",
+          "message",
+          "started_at"
+        ],
+        "title": "RunCycleOut",
+        "type": "object"
+      },
       "StockView": {
         "additionalProperties": false,
         "description": "Per-holding risk note, momentum and key price levels.",
@@ -3426,6 +3466,50 @@
         "summary": "Risk Checks",
         "tags": [
           "exec-readback"
+        ]
+      }
+    },
+    "/run-cycle": {
+      "post": {
+        "description": "Trigger an autonomous hedge assessment cycle.",
+        "operationId": "trigger_run_cycle_run_cycle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCycleIn",
+                "default": {
+                  "force": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunCycleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Run Cycle",
+        "tags": [
+          "workflow"
         ]
       }
     },

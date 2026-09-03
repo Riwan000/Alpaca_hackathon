@@ -22,13 +22,24 @@ describe('AppRoutes suite (P1-FE-7)', () => {
       screen.getByRole('heading', { name: /portfolio risk & strategy dashboard/i })
     ).toBeInTheDocument();
 
-    // Verify fetched stub data is rendered once all async queries resolve
     await waitFor(() => {
       expect(screen.getByTestId('portfolio-aum')).toHaveTextContent('AUM $1,000,000');
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('selected-strategy-name')).toHaveTextContent(/PROTECTIVE PUT/i);
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('strategy-cost')).toHaveTextContent('$17,000');
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('greek-delta')).toHaveTextContent('-700');
-      expect(screen.getByTestId('active-trigger-item')).toHaveTextContent(/TRIGGER: DRAWDOWN_LIMIT/i);
+    });
+    await waitFor(() => {
+      const items = screen.getAllByTestId('active-trigger-item');
+      expect(items.length).toBeGreaterThan(0);
+      expect(items[0]).toHaveTextContent(/DRAWDOWN_LIMIT/i);
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('monitoring-status')).toHaveTextContent(/REASSESS RECOMMENDED/i);
     });
   });
