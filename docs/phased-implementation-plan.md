@@ -696,9 +696,9 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-DB-4** — Persist `MonitoringState` (`current_hedge`, `target_hedge`, `cooldown_until`, `trigger_history[]`, `monitoring_status`).
   - Test: `tests/db/test_monitoring_repo.py::test_state` — round-trips; `trigger_history` append-only; `cooldown_until` nullable.
   - [x] Confirm — `monitoring_state` table added and `save_state` / `get_latest_state` roundtrip verified with cooldown timestamp.
-- [ ] **P7-DB-5** — Endpoints: `GET /monitoring/state`, `GET /monitoring/events`.
+- [x] **P7-DB-5** — Endpoints: `GET /monitoring/state`, `GET /monitoring/events`.
   - Test: `tests/api/test_monitoring_readback.py` — state returns current vs target; events filter by `cycle_id` and order by `fired_at`.
-  - [ ] Confirm — `curl` both; data matches the DB.
+  - [x] Confirm — `GET /monitoring/state` and `GET /monitoring/events` implemented in `backend/api/monitoring.py` and tested in `tests/api/test_monitoring_readback.py`.
 
 ### Backend
 - [ ] **P7-BE-1** — Monitoring Agent — Level 1 deterministic checks: drawdown, hedge drift, volatility, exposure, expiration, major state change. Does not trade.

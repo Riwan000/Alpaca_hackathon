@@ -22,6 +22,7 @@ from backend.api import (
     strategy_readback,
     stubs,
     workflow,
+    monitoring,
 )
 
 _DEFAULT_CORS = ["http://localhost:3000", "http://localhost:5173"]
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(strategy_evaluate.router)
     app.include_router(exec_readback.router)
     app.include_router(workflow.router)
+    app.include_router(monitoring.router)
     app.include_router(stubs.router)
     return app
 

@@ -1002,6 +1002,58 @@
         "title": "MarketState",
         "type": "object"
       },
+      "MonitoringEventOut": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "fired_at": {
+            "format": "date-time",
+            "title": "Fired At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "trigger_type": {
+            "title": "Trigger Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "trigger_type",
+          "fired_at"
+        ],
+        "title": "MonitoringEventOut",
+        "type": "object"
+      },
       "MonitoringState": {
         "additionalProperties": false,
         "description": "Rolling monitoring snapshot for one cycle (BRD §24).",
@@ -1148,6 +1200,93 @@
           "as_of"
         ],
         "title": "MonitoringState",
+        "type": "object"
+      },
+      "MonitoringStateOut": {
+        "properties": {
+          "cooldown_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooldown Until"
+          },
+          "current_hedge": {
+            "title": "Current Hedge",
+            "type": "number"
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "monitoring_status": {
+            "default": "ACTIVE",
+            "title": "Monitoring Status",
+            "type": "string"
+          },
+          "target_hedge": {
+            "title": "Target Hedge",
+            "type": "number"
+          },
+          "trigger_history": {
+            "default": [],
+            "items": {},
+            "title": "Trigger History",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "current_hedge",
+          "target_hedge"
+        ],
+        "title": "MonitoringStateOut",
         "type": "object"
       },
       "NewsItem": {
@@ -2897,6 +3036,84 @@
         "summary": "Stub Monitoring",
         "tags": [
           "stubs"
+        ]
+      }
+    },
+    "/monitoring/events": {
+      "get": {
+        "description": "Return monitoring trigger events ordered by fired_at ascending.",
+        "operationId": "list_monitoring_events_monitoring_events_get",
+        "parameters": [
+          {
+            "description": "Optional cycle_id filter",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional cycle_id filter",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MonitoringEventOut"
+                  },
+                  "title": "Response List Monitoring Events Monitoring Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Monitoring Events",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/monitoring/state": {
+      "get": {
+        "description": "Return latest monitoring state including hedge ratios and cooldown.",
+        "operationId": "get_monitoring_state_monitoring_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitoringStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Monitoring State",
+        "tags": [
+          "monitoring"
         ]
       }
     },
