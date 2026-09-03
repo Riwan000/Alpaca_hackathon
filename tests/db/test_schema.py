@@ -1109,6 +1109,66 @@ def test_agent_runs_timeline_index(tmp_path: Path) -> None:
     )
 
 
+def test_workflow_state(tmp_path: Path) -> None:
+    """Task P6-DB-1: workflow_state table creation and schema validation."""
+    db_url = _scratch_url(tmp_path)
+
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url))
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        assert "workflow_state" in tables, f"Table 'workflow_state' not found in database; found {tables}"
+        assert "workflow_transitions" in tables, f"Table 'workflow_transitions' not found in database; found {tables}"
+
+        pk_constraint = inspector.get_pk_constraint("workflow_state")
+        assert pk_constraint["constrained_columns"] == ["id"]
+
+        columns = inspector.get_columns("workflow_state")
+        col_by_name = {c["name"]: c for c in columns}
+
+        expected_columns = [
+            "id",
+            "cycle_id",
+            "current_node",
+            "status",
+            "detail",
+            "created_at",
+            "updated_at",
+        ]
+        for col_name in expected_columns:
+            assert col_name in col_by_name, f"Column '{col_name}' missing from workflow_state"
+
+        metadata = MetaData()
+        workflow_state_table = Table("workflow_state", metadata, autoload_with=engine)
+
+        with engine.begin() as conn:
+            stmt = insert(workflow_state_table).values(
+                cycle_id="cycle_wf_001",
+                current_node="INITIAL",
+                status="RUNNING",
+                detail={"step": 1},
+                created_at=datetime.datetime.now(datetime.timezone.utc),
+                updated_at=datetime.datetime.now(datetime.timezone.utc),
+            )
+            res = conn.execute(stmt)
+            inserted_id = res.inserted_primary_key[0]
+
+            row = conn.execute(
+                select(workflow_state_table).where(workflow_state_table.c.id == inserted_id)
+            ).mappings().one()
+
+            assert row["cycle_id"] == "cycle_wf_001"
+            assert row["current_node"] == "INITIAL"
+            assert row["status"] == "RUNNING"
+            assert row["detail"] == {"step": 1}
+    finally:
+        engine.dispose()
+
+
+
 
 
 

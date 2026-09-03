@@ -22,6 +22,8 @@ from backend.models.enums import (
     RiskVerdict,
     StrategyType,
     TriggerType,
+    WorkflowNode,
+    WorkflowStatus,
 )
 
 # name -> pinned string value, per enum
@@ -83,6 +85,23 @@ PINNED: dict[type, dict[str, str]] = {
     OptionRight: {"CALL": "CALL", "PUT": "PUT"},
     OrderSide: {"BUY": "BUY", "SELL": "SELL"},
     AssetClass: {"EQUITY": "EQUITY", "OPTION": "OPTION", "CASH": "CASH"},
+    WorkflowNode: {
+        "INITIAL": "INITIAL",
+        "ANALYZING": "ANALYZING",
+        "STRATEGY_EVALUATION": "STRATEGY_EVALUATION",
+        "RISK_CHECK": "RISK_CHECK",
+        "EXECUTION": "EXECUTION",
+        "MONITORING": "MONITORING",
+        "COMPLETED": "COMPLETED",
+        "FAILED": "FAILED",
+    },
+    WorkflowStatus: {
+        "PENDING": "PENDING",
+        "RUNNING": "RUNNING",
+        "COMPLETED": "COMPLETED",
+        "FAILED": "FAILED",
+        "HALTED": "HALTED",
+    },
 }
 
 

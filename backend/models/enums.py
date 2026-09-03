@@ -24,7 +24,33 @@ __all__ = [
     "RiskVerdict",
     "StrategyType",
     "TriggerType",
+    "WorkflowNode",
+    "WorkflowStatus",
 ]
+
+
+class WorkflowNode(str, Enum):
+    """LangGraph orchestrator workflow nodes (BRD §25, Task P6-BE-1)."""
+
+    INITIAL = "INITIAL"
+    ANALYZING = "ANALYZING"
+    STRATEGY_EVALUATION = "STRATEGY_EVALUATION"
+    RISK_CHECK = "RISK_CHECK"
+    EXECUTION = "EXECUTION"
+    MONITORING = "MONITORING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class WorkflowStatus(str, Enum):
+    """Execution status of a workflow run or cycle."""
+
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    HALTED = "HALTED"
+
 
 
 class StrategyType(str, Enum):

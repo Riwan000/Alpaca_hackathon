@@ -605,9 +605,9 @@ The non-negotiable safety layer, then the first real paper trade.
 Wire Phases 3–5 into one stateful pass. First hands-off cycle.
 
 ### DB
-- [ ] **P6-DB-1** — `workflow_state` table / columns — cycle_id, current_node, status, updated_at.
+- [x] **P6-DB-1** — `workflow_state` table / columns — cycle_id, current_node, status, updated_at.
   - Test: `tests/db/test_schema.py::test_workflow_state` — columns + `current_node` constrained to the node enum.
-  - [ ] Confirm — `\d workflow_state` matches.
+  - [x] Confirm — `workflow_state` and `workflow_transitions` created via migration `0016_workflow_state` with `WorkflowRepository` in `backend/db/workflow_repo.py`. Tests `test_workflow_state` and `test_workflow_repo.py` pass.
 - [ ] **P6-DB-2** — Persist node transitions so a restart resumes the decision history (Tech-Stack §21).
   - Test: `tests/e2e/test_resume.py` — kill the process mid-cycle, restart → run continues from the last persisted node, no duplicate orders.
   - [ ] Confirm — Ctrl-C during `ANALYZING`, restart; the cycle resumes, doesn't restart.
