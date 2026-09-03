@@ -793,9 +793,9 @@ Assemble the full experience and make the agent's behavior visible.
   - [x] Confirm — `backend/demo_replay.py` reproduces the complete 8-scene demo dataset across all database tables; verified in `tests/e2e/test_demo_replay.py`.
 
 ### Frontend
-- [ ] **P8-FE-1** — `Performance` component — hedged vs unhedged chart + P&L tiles.
+- [x] **P8-FE-1** — `Performance` component — hedged vs unhedged chart + P&L tiles.
   - Test: `src/components/Performance.test.tsx` (MSW) — two series drawn; tiles show net / portfolio / hedge P&L; negative values styled.
-  - [ ] Confirm — chart matches `/pnl/series` + benchmark.
+  - [x] Confirm — `src/components/Performance.tsx` renders P&L tiles and hedged vs benchmark comparison line chart; tests pass.
 - [ ] **P8-FE-2** — Full dashboard assembly — Portfolio / Risk / Hedge / Recommendation / StrategyComparison / AgentActivity / TradeHistory / Performance.
   - Test: `src/routes/Dashboard.test.tsx` — every panel mounts with its endpoint mocked; one failing panel doesn't blank the page.
   - [ ] Confirm — load `/` against the live backend; all panels populate.
