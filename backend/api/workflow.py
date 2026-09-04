@@ -107,7 +107,14 @@ class RunCycleOut(BaseModel):
 def get_orchestrator_deps() -> Any:  # pragma: no cover
     """FastAPI dependency - returns a live OrchestratorDeps; overridden in tests."""
     from backend.agents.orchestrator.nodes import OrchestratorDeps
-    return OrchestratorDeps()
+    from backend.integrations.alpaca.client import AlpacaClient
+
+    broker = None
+    try:
+        broker = AlpacaClient()
+    except Exception:
+        broker = None
+    return OrchestratorDeps(broker=broker)
 
 
 @router.post("/run-cycle", response_model=RunCycleOut, status_code=202)

@@ -332,6 +332,7 @@ def strategy_evaluation_node(deps: OrchestratorDeps) -> NodeBody:
             hypotheses = [agent().propose(ctx) for agent in _STRATEGY_AGENTS]
             pre = prefilter(hypotheses, ctx)
             decision = StrategyManager(client=deps.llm_client).run(pre, ctx)
+            _persist_strategy(deps.engine, hypotheses, decision)
         except Exception as exc:  # noqa: BLE001 - a strategy-layer failure routes to MONITORING, never crashes
             logger.exception("STRATEGY_EVALUATION node failed")
             return _failure_payload(WorkflowNode.STRATEGY_EVALUATION, exc)
@@ -349,6 +350,106 @@ def strategy_evaluation_node(deps: OrchestratorDeps) -> NodeBody:
 
     _run.__name__ = "strategy_evaluation_node"
     return _run
+
+
+def _persist_strategy(
+    engine: "Engine | None",
+    hypotheses: list[Any],
+    decision: Any,
+) -> None:
+    """Best-effort persistence of strategy hypotheses + decision."""
+    if engine is None:
+        return
+    try:
+        from backend.db.strategy_repo import (
+            StrategyDecisionRecord,
+            StrategyDecisionRepository,
+            StrategyHypothesisRecord,
+            StrategyHypothesisRepository,
+        )
+
+        hypo_repo = StrategyHypothesisRepository(engine)
+        dec_repo = StrategyDecisionRepository(engine)
+
+        records = []
+        for hyp in hypotheses:
+            verdict = "ACCEPTED" if getattr(hyp, "viable", True) else "REJECTED"
+            legs = [leg.model_dump(mode="json") for leg in hyp.legs] if getattr(hyp, "legs", None) else None
+            metrics: dict[str, Any] = {}
+            m = getattr(hyp, "hedge_metrics", None)
+            if m:
+                if getattr(m, "cost_pct_of_portfolio", None) is not None:
+                    metrics["cost_pct_of_portfolio"] = m.cost_pct_of_portfolio
+                if getattr(m, "downside_protection_pct", None) is not None:
+                    metrics["downside_protection_pct"] = m.downside_protection_pct
+                if getattr(m, "hedge_ratio", None) is not None:
+                    metrics["hedge_ratio"] = m.hedge_ratio
+            records.append(
+                StrategyHypothesisRecord(
+                    cycle_id=hyp.cycle_id,
+                    strategy_type=getattr(getattr(hyp, "strategy", None), "value", str(getattr(hyp, "strategy", "UNKNOWN"))),
+                    verdict=verdict,
+                    legs=legs or None,
+                    metrics=metrics or None,
+                    rejection_reason=getattr(hyp, "rejection_reason", None),
+                )
+            )
+
+        saved = hypo_repo.save_many(records)
+
+        selected_id: int | None = None
+        if getattr(decision, "selected_hypothesis", None) is not None:
+            sel_strat = getattr(
+                getattr(decision.selected_hypothesis, "strategy", None),
+                "value",
+                str(getattr(decision.selected_hypothesis, "strategy", "")),
+            )
+            for saved_rec in saved:
+                if saved_rec.strategy_type == sel_strat:
+                    selected_id = saved_rec.id
+                    break
+
+        alternatives = [
+            {
+                "strategy": getattr(getattr(h, "strategy", None), "value", str(getattr(h, "strategy", ""))),
+                "viable": h.viable,
+                "cost": getattr(h, "cost", 0.0),
+                "rationale": getattr(h, "rationale", ""),
+            }
+            for h in getattr(decision, "alternatives", [])
+        ]
+        comparison = [
+            {
+                "strategy": getattr(getattr(row, "strategy", None), "value", str(getattr(row, "strategy", ""))),
+                "cost": getattr(row, "cost", 0.0),
+                "downside_protection_pct": getattr(row, "downside_protection_pct", 0.0),
+                "upside_giveup_pct": getattr(row, "upside_giveup_pct", 0.0),
+                "liquidity": getattr(row, "liquidity", "HIGH"),
+                "complexity": getattr(row, "complexity", "LOW"),
+                "estimated_drag_bps": getattr(row, "estimated_drag_bps", 0.0),
+            }
+            for row in getattr(decision, "comparison", [])
+        ]
+
+        action = (
+            getattr(decision.decision, "value", str(decision.decision))
+            if hasattr(decision, "decision")
+            else "NO_TRADE"
+        )
+
+        dec_repo.create(
+            StrategyDecisionRecord(
+                cycle_id=decision.cycle_id,
+                action=action,
+                rationale=getattr(decision, "rationale", ""),
+                selected_hypothesis_id=selected_id,
+                alternatives=alternatives or None,
+                comparison=comparison or None,
+            )
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("STRATEGY_EVALUATION node: persistence error for %s", getattr(decision, "cycle_id", "unknown"))
+
 
 
 # --------------------------------------------------------------------------- #

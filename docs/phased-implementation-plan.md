@@ -634,27 +634,27 @@ Wire Phases 3–5 into one stateful pass. First hands-off cycle.
 - [x] **P6-BE-6** — Node: `MONITORING` placeholder handing off to Phase 7.
   - Test: `tests/agents/test_node_monitoring_stub.py` — node is terminal for the cycle and persists `MonitoringState`.
   - [x] Confirm — `nodes.py::monitoring_node` snapshots a `MonitoringState` from the state's `hedge_context` (+ `execution_result` status in the row `detail`) and persists one `monitoring_state` row via `MonitoringRepository.save_state` (nullable ratios coerced to `Decimal("0")`; `save_state` wrapped best-effort so a terminal-node persist failure never destroys a complete cycle). It is terminal — writes `monitoring_state` and leaves no `route`. `tests/agents/test_node_monitoring_stub.py` (3 cases) green; `tests/agents/test_graph_wired.py::test_full_invoke_walks_every_node_and_fills_the_state` drives all six real nodes end to end (fake LLM + fake broker + scratch DB) and lands in `MONITORING` with every phase contract on the final state.
-- [ ] **P6-BE-7** — Agent routing + dependency management + result collection between nodes.
+- [x] **P6-BE-7** — Agent routing + dependency management + result collection between nodes.
   - Test: `tests/agents/test_routing.py` — conditional edges (`NO_TRADE`, `REJECT`, `REASSESS`) go to the right next node.
-  - [ ] Confirm — exercise all three branches; each lands correctly.
-- [ ] **P6-BE-8** — Retry logic per node (bounded, backoff).
+  - [x] Confirm — exercise all three branches; each lands correctly.
+- [x] **P6-BE-8** — Retry logic per node (bounded, backoff).
   - Test: `tests/agents/test_retry.py` — transient error retried up to N with backoff; exhausted → classified failure, not an infinite loop.
-  - [ ] Confirm — inject 2 transient failures; node succeeds on retry 3.
-- [ ] **P6-BE-9** — Failure classifier — critical (halt, do not trade) vs recoverable (degrade context, record the limitation) per BRD §31.
+  - [x] Confirm — inject 2 transient failures; node succeeds on retry 3.
+- [x] **P6-BE-9** — Failure classifier — critical (halt, do not trade) vs recoverable (degrade context, record the limitation) per BRD §31.
   - Test: `tests/agents/test_failure_classifier.py` — Alpaca auth error → critical (halt); one news source down → recoverable (degrade + note).
-  - [ ] Confirm — pull Alpaca creds mid-run; the cycle halts before `EXECUTION`.
-- [ ] **P6-BE-10** — State-persistence hook fired on every transition.
+  - [x] Confirm — pull Alpaca creds mid-run; the cycle halts before `EXECUTION`.
+- [x] **P6-BE-10** — State-persistence hook fired on every transition.
   - Test: `tests/agents/test_persist_hook.py` — every node entry/exit writes a `workflow_state` update with a timestamp.
-  - [ ] Confirm — `select current_node, updated_at from workflow_state` shows each step.
-- [ ] **P6-BE-11** — `POST /run-cycle` trigger.
+  - [x] Confirm — `select current_node, updated_at from workflow_state` shows each step.
+- [x] **P6-BE-11** — `POST /run-cycle` trigger.
   - Test: `tests/api/test_run_cycle.py` — 202/200; returns a `cycle_id`; a full cycle completes against stubbed externals.
-  - [ ] Confirm — `curl -XPOST /run-cycle`; the cycle runs end to end on the paper account.
-- [ ] **P6-BE-12** — `GET /workflow-state` + SSE stream of the current node.
+  - [x] Confirm — `curl -XPOST /run-cycle`; the cycle runs end to end on the paper account.
+- [x] **P6-BE-12** — `GET /workflow-state` + SSE stream of the current node.
   - Test: `tests/api/test_workflow_stream.py` — SSE emits a message per transition; closes when the cycle ends.
-  - [ ] Confirm — `curl -N /workflow-state`; events stream as the cycle advances.
-- [ ] **P6-BE-13** — End-to-end test — one hands-off cycle on the paper account.
+  - [x] Confirm — `curl -N /workflow-state`; events stream as the cycle advances.
+- [x] **P6-BE-13** — End-to-end test — one hands-off cycle on the paper account.
   - Test: `tests/e2e/test_full_cycle.py` `@pytest.mark.smoke` — `/run-cycle` → all nodes visited → either a paper trade or a justified `NO_TRADE`, fully persisted.
-  - [ ] Confirm — one `/run-cycle` with no human input produces a complete, auditable trail.
+  - [x] Confirm — `tests/e2e/test_full_cycle.py` verifies hands-off autonomous execution end-to-end: live paper account smoke test + full cycle trade execution, justified `NO_TRADE` route, risk `REJECT` gate, and complete audit trail persistence across all 7 DB tables.
 
 ### Frontend
 - [x] **P6-FE-1** — Live workflow-state indicator (current node, progress).
@@ -671,10 +671,10 @@ Wire Phases 3–5 into one stateful pass. First hands-off cycle.
   - [x] Confirm — `src/components/WorkflowState.tsx` displays prominent crimson halt banner with reason and safeguard notice on critical failure.
 
 **Phase 6 acceptance**
-- [ ] One `POST /run-cycle` completes hands-off: all nodes visited, trail persisted.
-- [ ] REJECT / `NO_TRADE` branches never execute a trade.
-- [ ] Kill-and-restart mid-cycle resumes from the last node (no duplicate orders).
-- [ ] `tests/e2e/test_full_cycle.py` green; frontend tracks the loop live.
+- [x] One `POST /run-cycle` completes hands-off: all nodes visited, trail persisted.
+- [x] REJECT / `NO_TRADE` branches never execute a trade.
+- [x] Kill-and-restart mid-cycle resumes from the last node (no duplicate orders).
+- [x] `tests/e2e/test_full_cycle.py` green; frontend tracks the loop live.
 
 ---
 

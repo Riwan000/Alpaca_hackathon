@@ -2865,6 +2865,54 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorkflowStateOut": {
+        "description": "Current workflow state snapshot for one cycle.",
+        "properties": {
+          "current_node": {
+            "title": "Current Node",
+            "type": "string"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "current_node",
+          "status"
+        ],
+        "title": "WorkflowStateOut",
+        "type": "object"
+      },
       "WorkflowTransitionOut": {
         "properties": {
           "detail": {
@@ -3560,7 +3608,7 @@
     },
     "/run-cycle": {
       "post": {
-        "description": "Trigger an autonomous hedge assessment cycle.",
+        "description": "Trigger an autonomous hedge assessment cycle (P6-BE-11 / #157).\n\nStarts the six-node LangGraph pipeline in a background thread and returns\n202 Accepted immediately with the new cycle_id.  Progress is readable via\nGET /cycle/{cycle_id}/state or GET /workflow-state/stream?cycle_id=...",
         "operationId": "trigger_run_cycle_run_cycle_post",
         "requestBody": {
           "content": {
@@ -3575,7 +3623,7 @@
           }
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -3793,6 +3841,122 @@
         "summary": "Stub Strategy Hypothesis",
         "tags": [
           "stubs"
+        ]
+      }
+    },
+    "/workflow-state": {
+      "get": {
+        "description": "Return the current workflow state (P6-BE-12 / #158).\n\ncycle_id is optional; omitting it returns the most-recently updated cycle.\nReturns 404 when no state has been persisted yet.",
+        "operationId": "get_workflow_state_workflow_state_get",
+        "parameters": [
+          {
+            "description": "Cycle to inspect; omit for latest",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycle to inspect; omit for latest",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workflow State",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/workflow-state/stream": {
+      "get": {
+        "description": "SSE stream of workflow-state transitions (P6-BE-12 / #158).\n\nEmits one ``data: <JSON>`` Server-Sent Event per new row in\n``workflow_transitions`` for the requested cycle (or the most-recently\nactive cycle when cycle_id is omitted).\n\nEach event body is a JSON object with keys cycle_id, node, status, ts.\n\nThe stream closes automatically when:\n\n* the cycle reaches a terminal node (COMPLETED / FAILED); or\n* the MONITORING EXIT transition is emitted.",
+        "operationId": "stream_workflow_state_workflow_state_stream_get",
+        "parameters": [
+          {
+            "description": "Cycle to stream; omit for latest",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycle to stream; omit for latest",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poll_interval_s",
+            "required": false,
+            "schema": {
+              "default": 0.5,
+              "maximum": 10.0,
+              "minimum": 0.0,
+              "title": "Poll Interval S",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Stream Workflow State Workflow State Stream Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Workflow State",
+        "tags": [
+          "workflow"
         ]
       }
     }
