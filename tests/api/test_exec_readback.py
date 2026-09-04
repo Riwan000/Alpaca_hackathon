@@ -3,6 +3,9 @@
 * ``GET /risk/checks?cycle_id=`` filters by ``cycle_id``; without it, every row.
 * ``GET /orders?cycle_id=`` filters by ``cycle_id`` and each order **includes
   its fills nested**; without it, every order.
+* ``GET /execution?cycle_id=`` reshapes the latest order for a cycle into an
+  ``ExecutionResult``; 404s when the cycle has no order (a NO_HEDGE decision
+  never reaches ``POST /execute``, so that's a legitimate outcome).
 * Counts and nested-fill data returned match the database (the P5-DB-4 confirm).
 """
 
@@ -170,6 +173,144 @@ def test_returned_data_matches_the_db(client: TestClient) -> None:
     )
 
 
+def test_execution_returns_filled_result_for_cycle(client: TestClient) -> None:
+    response = client.get("/execution", params={"cycle_id": "cycle_a"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["cycle_id"] == "cycle_a"
+    assert body["status"] == "FILLED"
+    assert body["broker_order_id"] == "alpaca-a-1"
+    assert body["failed_legs"] == []
+    assert [leg["leg_symbol"] for leg in body["filled_legs"]] == [
+        "AAPL260320P00145000",
+        "AAPL260320P00135000",
+    ]
+    # actual_cost is the unsigned notional: (1 * 3.15 + 1 * 1.05) * 100
+    assert body["actual_cost"] == 420.0
+    assert body["slippage"] == pytest.approx(0.005)
+
+
+def test_execution_returns_failed_result_for_rejected_order(client: TestClient) -> None:
+    response = client.get("/execution", params={"cycle_id": "cycle_b"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "FAILED"
+    assert body["filled_legs"] == []
+    assert body["error"]
+
+
+def test_execution_without_cycle_returns_most_recent_order(client: TestClient) -> None:
+    # cycle_b's order was inserted after cycle_a's, so it's "latest" overall.
+    response = client.get("/execution")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["cycle_id"] == "cycle_b"
+
+
+def test_execution_404s_when_cycle_has_no_order(client: TestClient) -> None:
+    response = client.get("/execution", params={"cycle_id": "cycle_never_executed"})
+
+    assert response.status_code == 404
+
+
+def test_execution_filled_order_tolerates_occ_symbol_casing_mismatch(
+    client: TestClient,
+) -> None:
+    """A FILLED order never reports failed_legs even if occ_symbol casing/
+    whitespace on the persisted plan leg doesn't line up with the fill's
+    leg_symbol — orders.status is authoritative, not the symbol diff."""
+    engine = client.app.dependency_overrides[get_readback_engine]()
+    OrderRepository(engine).save_with_fills(
+        OrderRecord(
+            cycle_id="cycle_casing",
+            order_class="SINGLE",
+            status="FILLED",
+            legs=[{"occ_symbol": " aapl260320p00145000 ", "side": "BUY"}],
+            broker_order_id="alpaca-casing-1",
+        ),
+        [FillRecord(order_id=0, leg_symbol="AAPL260320P00145000", qty=Decimal("1"), price=Decimal("3.15"))],
+    )
+
+    response = client.get("/execution", params={"cycle_id": "cycle_casing"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "FILLED"
+    assert response.json()["failed_legs"] == []
+
+
+def test_execution_drops_a_fractional_fill_qty_without_crashing(client: TestClient) -> None:
+    """A malformed persisted qty < 1 can't become a FilledLeg (qty > 0); the
+    endpoint drops it rather than raising a 500 out of pydantic validation."""
+    engine = client.app.dependency_overrides[get_readback_engine]()
+    OrderRepository(engine).save_with_fills(
+        OrderRecord(
+            cycle_id="cycle_fractional",
+            order_class="SINGLE",
+            status="FILLED",
+            broker_order_id="alpaca-fractional-1",
+        ),
+        [FillRecord(order_id=0, leg_symbol="X", qty=Decimal("0.4"), price=Decimal("4.0"))],
+    )
+
+    response = client.get("/execution", params={"cycle_id": "cycle_fractional"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["filled_legs"] == []
+
+
+def test_execution_partially_filled_reports_the_unfilled_leg(client: TestClient) -> None:
+    engine = client.app.dependency_overrides[get_readback_engine]()
+    OrderRepository(engine).save_with_fills(
+        OrderRecord(
+            cycle_id="cycle_partial",
+            order_class="MLEG",
+            status="PARTIALLY_FILLED",
+            legs=[
+                {"occ_symbol": "AAPL260320P00145000", "side": "BUY"},
+                {"occ_symbol": "AAPL260320P00135000", "side": "SELL"},
+            ],
+            broker_order_id="alpaca-partial-1",
+        ),
+        [FillRecord(order_id=0, leg_symbol="AAPL260320P00145000", qty=Decimal("1"), price=Decimal("3.15"))],
+    )
+
+    response = client.get("/execution", params={"cycle_id": "cycle_partial"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "PARTIALLY_FILLED"
+    assert [leg["leg_symbol"] for leg in body["failed_legs"]] == ["AAPL260320P00135000"]
+
+
+def test_execution_expired_order_maps_to_cancelled_not_a_fabricated_failure(
+    client: TestClient,
+) -> None:
+    engine = client.app.dependency_overrides[get_readback_engine]()
+    OrderRepository(engine).create(
+        OrderRecord(cycle_id="cycle_expired", order_class="SINGLE", status="EXPIRED")
+    )
+
+    response = client.get("/execution", params={"cycle_id": "cycle_expired"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "CANCELLED"
+
+
+def test_execution_404s_on_a_non_terminal_order_instead_of_faking_a_result(
+    client: TestClient,
+) -> None:
+    engine = client.app.dependency_overrides[get_readback_engine]()
+    OrderRepository(engine).create(
+        OrderRecord(cycle_id="cycle_in_flight", order_class="SINGLE", status="SUBMITTED")
+    )
+
+    response = client.get("/execution", params={"cycle_id": "cycle_in_flight"})
+
+    assert response.status_code == 404
+
+
 def test_empty_db_returns_empty_lists(tmp_path: Path) -> None:
     db_url = f"sqlite:///{tmp_path / 'empty_exec_scratch.db'}"
     up = _run_alembic("upgrade", "head", db_url=db_url)
@@ -182,6 +323,7 @@ def test_empty_db_returns_empty_lists(tmp_path: Path) -> None:
         with TestClient(app) as test_client:
             assert test_client.get("/risk/checks").json() == []
             assert test_client.get("/orders").json() == []
+            assert test_client.get("/execution").status_code == 404
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

@@ -670,6 +670,9 @@ export const handlers = [
       },
     ]);
   }),
+  http.get('*/workflow-state', () => {
+    return HttpResponse.json(STUB_WORKFLOW_STATE);
+  }),
   http.get('*/workflow/state', () => {
     return HttpResponse.json(STUB_WORKFLOW_STATE);
   }),

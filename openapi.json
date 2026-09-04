@@ -3745,6 +3745,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -4150,8 +4157,28 @@
     },
     "/execution": {
       "get": {
-        "description": "A FILLED :class:`ExecutionResult` fixture (BRD §23).",
-        "operationId": "stub_execution_execution_get",
+        "description": "The most recently persisted order for a cycle, as an ExecutionResult.\n\ncycle_id is optional; omitting it returns the most recently submitted\norder across all cycles (mirrors ``GET /workflow-state``'s \"omit for\nlatest\" convention). Raises 404 when no order has been persisted for that\ncycle — a NO_HEDGE decision never reaches ``POST /execute``, so having no\norder to report is a legitimate outcome, not a server error.",
+        "operationId": "execution_result_execution_get",
+        "parameters": [
+          {
+            "description": "Cycle to inspect; omit for latest",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycle to inspect; omit for latest",
+              "title": "Cycle Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -4162,11 +4189,21 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Stub Execution",
+        "summary": "Execution Result",
         "tags": [
-          "stubs"
+          "exec-readback"
         ]
       }
     },
@@ -4864,6 +4901,49 @@
         ]
       }
     },
+    "/strategy/hypotheses/{hypothesis_id}": {
+      "get": {
+        "description": "A single StrategyHypothesis proposal (P4-DB-3 / #110).",
+        "operationId": "get_strategy_hypothesis_strategy_hypotheses__hypothesis_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hypothesis_id",
+            "required": true,
+            "schema": {
+              "title": "Hypothesis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyHypothesis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Strategy Hypothesis",
+        "tags": [
+          "strategy-readback"
+        ]
+      }
+    },
     "/strategy/hypothesis": {
       "get": {
         "description": "A single viable :class:`StrategyHypothesis` fixture (BRD §16).",
@@ -4939,6 +5019,122 @@
       }
     },
     "/workflow-state/stream": {
+      "get": {
+        "description": "SSE stream of workflow-state transitions (P6-BE-12 / #158).\n\nEmits one ``data: <JSON>`` Server-Sent Event per new row in\n``workflow_transitions`` for the requested cycle (or the most-recently\nactive cycle when cycle_id is omitted).\n\nEach event body is a JSON object with keys cycle_id, node, status, ts.\n\nThe stream closes automatically when:\n\n* the cycle reaches a terminal node (COMPLETED / FAILED); or\n* the MONITORING EXIT transition is emitted.",
+        "operationId": "stream_workflow_state_workflow_state_stream_get",
+        "parameters": [
+          {
+            "description": "Cycle to stream; omit for latest",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycle to stream; omit for latest",
+              "title": "Cycle Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poll_interval_s",
+            "required": false,
+            "schema": {
+              "default": 0.5,
+              "maximum": 10.0,
+              "minimum": 0.0,
+              "title": "Poll Interval S",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Stream Workflow State Workflow State Stream Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Workflow State",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/workflow/state": {
+      "get": {
+        "description": "Return the current workflow state (P6-BE-12 / #158).\n\ncycle_id is optional; omitting it returns the most-recently updated cycle.\nReturns 404 when no state has been persisted yet.",
+        "operationId": "get_workflow_state_workflow_state_get",
+        "parameters": [
+          {
+            "description": "Cycle to inspect; omit for latest",
+            "in": "query",
+            "name": "cycle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cycle to inspect; omit for latest",
+              "title": "Cycle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workflow State",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/workflow/state/stream": {
       "get": {
         "description": "SSE stream of workflow-state transitions (P6-BE-12 / #158).\n\nEmits one ``data: <JSON>`` Server-Sent Event per new row in\n``workflow_transitions`` for the requested cycle (or the most-recently\nactive cycle when cycle_id is omitted).\n\nEach event body is a JSON object with keys cycle_id, node, status, ts.\n\nThe stream closes automatically when:\n\n* the cycle reaches a terminal node (COMPLETED / FAILED); or\n* the MONITORING EXIT transition is emitted.",
         "operationId": "stream_workflow_state_workflow_state_stream_get",

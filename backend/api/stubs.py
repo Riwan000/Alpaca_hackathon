@@ -16,7 +16,6 @@ from fastapi import APIRouter
 
 from backend.models import (
     ExecutionPlan,
-    ExecutionResult,
     HedgeContext,
     MonitoringState,
     RiskDecision,
@@ -25,7 +24,6 @@ from backend.models import (
 )
 from backend.models.examples import (
     EXAMPLE_EXECUTION_PLAN,
-    EXAMPLE_EXECUTION_RESULT,
     EXAMPLE_HEDGE_CONTEXT,
     EXAMPLE_MONITORING_STATE,
     EXAMPLE_RISK_DECISION,
@@ -64,12 +62,6 @@ def stub_risk() -> RiskDecision:
 def stub_execution_plan() -> ExecutionPlan:
     """A ready-to-submit :class:`ExecutionPlan` fixture (BRD §21)."""
     return EXAMPLE_EXECUTION_PLAN
-
-
-@router.get("/execution", response_model=ExecutionResult)
-def stub_execution() -> ExecutionResult:
-    """A FILLED :class:`ExecutionResult` fixture (BRD §23)."""
-    return EXAMPLE_EXECUTION_RESULT
 
 
 @router.get("/monitoring", response_model=MonitoringState)

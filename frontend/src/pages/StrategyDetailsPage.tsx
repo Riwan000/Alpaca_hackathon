@@ -12,10 +12,9 @@ export const StrategyDetailsPage: React.FC = () => {
   const hypothesisQuery = useStrategyHypothesis(id);
 
   const isLoading = decisionQuery.isLoading || hypothesisQuery.isLoading;
-  const error = decisionQuery.error || hypothesisQuery.error;
-
   const decision = decisionQuery.data;
   const hypothesis = hypothesisQuery.data || decision?.selected_hypothesis;
+  const error = !hypothesis ? (hypothesisQuery.error || decisionQuery.error) : null;
 
   const formatCurrency = (val?: number | null) => {
     if (val === undefined || val === null || Number.isNaN(val)) return '—';

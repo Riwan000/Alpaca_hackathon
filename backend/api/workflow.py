@@ -192,6 +192,7 @@ class WorkflowStateOut(BaseModel):
 
 
 @router.get("/workflow-state", response_model=WorkflowStateOut)
+@router.get("/workflow/state", response_model=WorkflowStateOut)
 def get_workflow_state(
     cycle_id: str | None = Query(default=None, description="Cycle to inspect; omit for latest"),
     engine: Engine = Depends(get_readback_engine),
@@ -255,6 +256,7 @@ _LAST_PIPELINE_NODE = "MONITORING"
 
 
 @router.get("/workflow-state/stream")
+@router.get("/workflow/state/stream")
 def stream_workflow_state(
     cycle_id: str | None = Query(default=None, description="Cycle to stream; omit for latest"),
     poll_interval_s: float = Query(default=0.5, ge=0.0, le=10.0),

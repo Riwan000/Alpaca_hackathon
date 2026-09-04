@@ -3,9 +3,13 @@
 Adds composite indexes to the performance table tuned for fast time series
 and snapshot reads on the dashboard.
 
-Revision ID: 0018_dashboard_performance_indexes
+Revision ID: 0018_dashboard_perf_idx
 Revises: 0017_monitoring_tables
 Create Date: 2026-09-04
+
+Note: revision id shortened from "0018_dashboard_performance_indexes"
+(34 chars) to fit alembic_version.version_num (varchar(32)); the longer
+id was never stamped anywhere (upgrade failed atomically before commit).
 """
 from __future__ import annotations
 
@@ -14,7 +18,7 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0018_dashboard_performance_indexes"
+revision: str = "0018_dashboard_perf_idx"
 down_revision: str | Sequence[str] | None = "0017_monitoring_tables"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

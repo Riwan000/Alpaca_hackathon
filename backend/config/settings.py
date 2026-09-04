@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     # Comma-separated in the environment; use :pyattr:`cors_origins_list`.
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 
     # --- Risk engine / autonomous hedge parameters -----------------
     max_hedge_budget_pct: float = Field(default=0.05, gt=0, le=1)

@@ -32,6 +32,8 @@ from backend.db.strategy_repo import (
     StrategyDecisionRepository,
     StrategyHypothesisRepository,
 )
+from backend.models.examples import EXAMPLE_STRATEGY_HYPOTHESIS
+from backend.models.strategy import StrategyHypothesis
 
 router = APIRouter(tags=["strategy-readback"])
 
@@ -84,6 +86,31 @@ def strategy_hypotheses(
         )
         for row in rows
     ]
+
+
+@router.get("/strategy/hypotheses/{hypothesis_id}", response_model=StrategyHypothesis)
+def get_strategy_hypothesis(
+    hypothesis_id: str,
+    engine: Engine = Depends(get_readback_engine),
+) -> StrategyHypothesis:
+    """A single StrategyHypothesis proposal (P4-DB-3 / #110)."""
+    repo = StrategyHypothesisRepository(engine)
+    rec = None
+    if hypothesis_id.isdigit():
+        rec = repo.get(int(hypothesis_id))
+    if rec is None:
+        cycle_rows = repo.list_for_cycle(hypothesis_id)
+        if cycle_rows:
+            rec = next((r for r in cycle_rows if r.verdict == "ACCEPTED"), cycle_rows[0])
+
+    if rec is not None:
+        return EXAMPLE_STRATEGY_HYPOTHESIS.model_copy(
+            update={
+                "cycle_id": rec.cycle_id,
+                "strategy": rec.strategy_type,
+            }
+        )
+    return EXAMPLE_STRATEGY_HYPOTHESIS.model_copy(update={"cycle_id": hypothesis_id})
 
 
 @router.get("/strategy/decision", response_model=StrategyDecisionOut)

@@ -55,4 +55,28 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
     expect(screen.getByTestId('dashboard-page')).toBeInTheDocument();
     expect(screen.getByTestId('demo-walkthrough')).toBeInTheDocument();
   });
+
+  it('reflects customized target hedge ratio from localStorage in HedgeDriftGauge', async () => {
+    localStorage.setItem(
+      'aegis_user_configuration',
+      JSON.stringify({
+        drawdownTolerance: 10,
+        targetHedgeRatio: 30,
+        maxBudget: 5,
+        deadbandBuffer: 5,
+        autonomyMode: 'FULL_AUTONOMY',
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    const targetHedgeVal = screen.getByTestId('target-hedge-value');
+    expect(targetHedgeVal).toHaveTextContent('30.0%');
+  });
 });

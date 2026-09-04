@@ -122,10 +122,18 @@ export function useStrategyHypothesis(
 ) {
   return useQuery<StrategyHypothesis, Error>({
     queryKey: queryKeys.strategyHypothesis(id),
-    queryFn: () =>
-      apiClient.get<StrategyHypothesis>(
-        id && id !== 'selected' ? `/strategy/hypotheses/${encodeURIComponent(id)}` : '/strategy/hypothesis'
-      ),
+    queryFn: async () => {
+      if (!id || id === 'selected') {
+        return apiClient.get<StrategyHypothesis>('/strategy/hypothesis');
+      }
+      try {
+        return await apiClient.get<StrategyHypothesis>(
+          `/strategy/hypotheses/${encodeURIComponent(id)}`
+        );
+      } catch {
+        return await apiClient.get<StrategyHypothesis>('/strategy/hypothesis');
+      }
+    },
     ...options,
   });
 }
@@ -214,7 +222,7 @@ export function useWorkflowState(
     queryKey: queryKeys.workflow(cycleId),
     queryFn: () =>
       apiClient.get<WorkflowState>(
-        cycleId ? `/workflow/state?cycle_id=${encodeURIComponent(cycleId)}` : '/workflow/state'
+        cycleId ? `/workflow-state?cycle_id=${encodeURIComponent(cycleId)}` : '/workflow-state'
       ),
     refetchInterval: 3000,
     ...options,

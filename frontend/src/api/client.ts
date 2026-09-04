@@ -29,7 +29,7 @@ export class ApiError extends Error implements ApiErrorShape {
 
 export const getBaseUrl = (): string => {
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '').replace('//localhost:', '//127.0.0.1:');
   }
   return '';
 };
