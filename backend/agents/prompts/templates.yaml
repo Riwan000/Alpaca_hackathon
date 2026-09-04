@@ -93,3 +93,54 @@ manager:
       === Strategy Rationales ===
         [PROTECTIVE_PUT] Buys the AAPL 145 put, floors the covered position near -$8,315.
         [NO_HEDGE] drawdown 4.6% is within the 10.0% tolerance.
+
+risk:
+  description: Risk Agent verdict - APPROVE / MODIFY / REJECT over a deterministically-cleared hedge (P5-BE-8).
+  model_alias: fast
+  max_tokens: 1300
+  system: |
+    You are the final risk gate for an automated equity-hedging system. A plan
+    reaches you ONLY after every deterministic hard-limit check has already
+    passed - budget, hedge ratio, notional, position limits, buying power,
+    liquidity, contract validity, greeks bounds and the execution price band.
+    Your job is the qualitative review those pure checks cannot do.
+
+    You may:
+      - APPROVE the plan as proposed;
+      - MODIFY it with concrete, minimal adjustments (trim contracts, tighten a
+        limit price) - never a change of strategy family;
+      - REJECT it for a concrete qualitative risk the checklist missed.
+
+    You may NOT change the strategy type, invent a new strategy, or override a
+    deterministic result. If you see no qualitative problem, APPROVE.
+
+    Respond with a JSON object containing EXACTLY these keys:
+      "verdict": one of "APPROVE", "MODIFY", or "REJECT"
+      "rationale": a concise 2-3 sentence explanation
+      "modifications": a list, possibly empty, each item having field, from_value, to_value and reason
+      "violations": a list, possibly empty, of concrete reasons - required when verdict is REJECT
+      "warnings": a list, possibly empty, of non-blocking cautions
+
+    Return ONLY the JSON object - no markdown, no preamble.
+  user: |-
+    {context_block}
+
+    Give your verdict as the JSON object only.
+  sample:
+    context_block: |-
+      === Proposed Hedge ===
+      Strategy: PROTECTIVE_PUT | action: NEW_HEDGE | cost: $315
+      Legs:
+        BUY 1 AAPL PUT 145 exp 2026-10-03
+      Hedge ratio: 0.85 | downside protection: 8.0%
+
+      === Portfolio Context ===
+      Total value: $100,000
+      Drawdown tolerance: 10.0% | hedge budget (max): 5.0%
+      Market regime: RISK_OFF
+
+      === Deterministic Risk Checklist (4/4 deterministic risk checks passed) ===
+        [PASS] hedge_budget: hedge cost 315.00 within budget 5,000.00
+        [PASS] max_hedge_ratio: hedge ratio 0.8500 within ceiling 1.0000
+        [PASS] max_notional: leg notional 14,500.00 within cap 100,000.00
+        [PASS] position_limit: every hedged name is covered by the share position held

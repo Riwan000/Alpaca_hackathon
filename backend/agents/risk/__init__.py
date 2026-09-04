@@ -19,6 +19,13 @@ LLM may not clear a decision that still holds one.
 
 from __future__ import annotations
 
+from backend.agents.risk.aggregate import (
+    DEFAULT_CHECKS,
+    AggregateRiskResult,
+    DeterministicCheck,
+    aggregate_risk,
+)
+from backend.agents.risk.agent import RiskAgent, persist_risk_decision
 from backend.agents.risk.codes import ViolationCode
 from backend.agents.risk.contract import (
     DEFAULT_MIN_EXPIRY_DAYS,
@@ -52,15 +59,20 @@ from backend.agents.risk.liquidity import (
 )
 
 __all__ = [
+    "DEFAULT_CHECKS",
     "DEFAULT_MAX_HEDGE_RATIO",
     "DEFAULT_MAX_PRICE_DEVIATION_PCT",
     "DEFAULT_MIN_EXPIRY_DAYS",
     "DELTA_TOLERANCE_SHARES",
+    "AggregateRiskResult",
     "CheckOutcome",
+    "DeterministicCheck",
     "LiquidityThresholds",
     "NetDeltaBounds",
+    "RiskAgent",
     "RiskEngineLimits",
     "ViolationCode",
+    "aggregate_risk",
     "check_buying_power",
     "check_contract_validity",
     "check_expiration_window",
@@ -72,5 +84,6 @@ __all__ = [
     "check_net_delta_bounds",
     "check_position_limit",
     "check_price_band",
+    "persist_risk_decision",
     "run_limit_checks",
 ]
