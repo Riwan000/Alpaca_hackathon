@@ -124,6 +124,61 @@ class PerformanceRepository:
             for r in series
         ]
 
+    def get_benchmark_comparison(self, limit: int = 100) -> dict[str, Any]:
+        """Hedged vs unhedged comparison with peak-to-trough drawdown (P8-BE-2).
+
+        Walks the ordered performance series building two cumulative-P&L curves —
+        ``hedged`` (``net_pnl``) and ``unhedged`` (``benchmark_pnl``) — and the
+        running drawdown of each: the drop from that curve's own prior peak, as a
+        non-negative dollar magnitude. Before any hedge is on, ``net_pnl`` equals
+        ``benchmark_pnl`` at every point, so the two curves — and their
+        drawdowns — coincide. Once a protective put pays off inside a drawdown the
+        hedged curve troughs shallower, so ``hedged_max_drawdown`` falls below
+        ``unhedged_max_drawdown`` and ``is_cushioned`` is ``True`` (BRD §36).
+        """
+        series = self.get_series(limit=limit)
+
+        points: list[dict[str, Any]] = []
+        hedged_peak: decimal.Decimal | None = None
+        unhedged_peak: decimal.Decimal | None = None
+        hedged_max_dd = decimal.Decimal("0")
+        unhedged_max_dd = decimal.Decimal("0")
+        total_hedge_cost = decimal.Decimal("0")
+
+        for r in series:
+            hedged_peak = r.net_pnl if hedged_peak is None else max(hedged_peak, r.net_pnl)
+            unhedged_peak = (
+                r.benchmark_pnl if unhedged_peak is None else max(unhedged_peak, r.benchmark_pnl)
+            )
+            hedged_dd = hedged_peak - r.net_pnl
+            unhedged_dd = unhedged_peak - r.benchmark_pnl
+            hedged_max_dd = max(hedged_max_dd, hedged_dd)
+            unhedged_max_dd = max(unhedged_max_dd, unhedged_dd)
+            total_hedge_cost += r.hedge_cost
+
+            points.append(
+                {
+                    "ts": r.ts.isoformat() if r.ts else None,
+                    "cycle_id": r.cycle_id,
+                    "hedged_pnl": float(r.net_pnl),
+                    "unhedged_pnl": float(r.benchmark_pnl),
+                    "hedge_cushion": float(r.net_pnl - r.benchmark_pnl),
+                    "hedged_drawdown": float(hedged_dd),
+                    "unhedged_drawdown": float(unhedged_dd),
+                }
+            )
+
+        last = series[-1] if series else None
+        return {
+            "points": points,
+            "hedged_max_drawdown": float(hedged_max_dd),
+            "unhedged_max_drawdown": float(unhedged_max_dd),
+            "drawdown_reduction": float(unhedged_max_dd - hedged_max_dd),
+            "hedge_cushion": float(last.net_pnl - last.benchmark_pnl) if last else 0.0,
+            "hedge_cost": float(total_hedge_cost),
+            "is_cushioned": hedged_max_dd <= unhedged_max_dd,
+        }
+
     def explain_dashboard_query(self) -> str:
         """Run EXPLAIN on the indexed dashboard query plan (P8-DB-3)."""
         with self._engine.connect() as conn:

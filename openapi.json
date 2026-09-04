@@ -88,6 +88,91 @@
         "title": "AgentRunOut",
         "type": "object"
       },
+      "AnalysisContextNode": {
+        "properties": {
+          "beta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beta"
+          },
+          "buying_power": {
+            "title": "Buying Power",
+            "type": "number"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "number"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawdown"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PositionNode"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "integer"
+          },
+          "total_value": {
+            "title": "Total Value",
+            "type": "number"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          },
+          "volatility": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volatility"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "cycle_id",
+          "ts",
+          "total_value",
+          "cash",
+          "equity",
+          "buying_power",
+          "positions"
+        ],
+        "title": "AnalysisContextNode",
+        "type": "object"
+      },
       "AssetClass": {
         "description": "Coarse asset classification for a held position.",
         "enum": [
@@ -97,6 +182,102 @@
         ],
         "title": "AssetClass",
         "type": "string"
+      },
+      "BenchmarkComparisonOut": {
+        "properties": {
+          "drawdown_reduction": {
+            "title": "Drawdown Reduction",
+            "type": "number"
+          },
+          "hedge_cost": {
+            "title": "Hedge Cost",
+            "type": "number"
+          },
+          "hedge_cushion": {
+            "title": "Hedge Cushion",
+            "type": "number"
+          },
+          "hedged_max_drawdown": {
+            "title": "Hedged Max Drawdown",
+            "type": "number"
+          },
+          "is_cushioned": {
+            "title": "Is Cushioned",
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "unhedged_max_drawdown": {
+            "title": "Unhedged Max Drawdown",
+            "type": "number"
+          }
+        },
+        "required": [
+          "points",
+          "hedged_max_drawdown",
+          "unhedged_max_drawdown",
+          "drawdown_reduction",
+          "hedge_cushion",
+          "hedge_cost",
+          "is_cushioned"
+        ],
+        "title": "BenchmarkComparisonOut",
+        "type": "object"
+      },
+      "BenchmarkPointOut": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "hedge_cushion": {
+            "title": "Hedge Cushion",
+            "type": "number"
+          },
+          "hedged_drawdown": {
+            "title": "Hedged Drawdown",
+            "type": "number"
+          },
+          "hedged_pnl": {
+            "title": "Hedged Pnl",
+            "type": "number"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts"
+          },
+          "unhedged_drawdown": {
+            "title": "Unhedged Drawdown",
+            "type": "number"
+          },
+          "unhedged_pnl": {
+            "title": "Unhedged Pnl",
+            "type": "number"
+          }
+        },
+        "required": [
+          "cycle_id",
+          "hedged_pnl",
+          "unhedged_pnl",
+          "hedge_cushion",
+          "hedged_drawdown",
+          "unhedged_drawdown"
+        ],
+        "title": "BenchmarkPointOut",
+        "type": "object"
       },
       "BuildInfo": {
         "properties": {
@@ -351,6 +532,89 @@
         "title": "CycleStateOut",
         "type": "object"
       },
+      "DecisionTrailOut": {
+        "properties": {
+          "analysis_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisContextNode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "hypotheses": {
+            "items": {
+              "$ref": "#/components/schemas/HypothesisNode"
+            },
+            "title": "Hypotheses",
+            "type": "array"
+          },
+          "missing_links": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Links",
+            "type": "array"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderNode"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          },
+          "risk_approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskApprovalNode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "strategy_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyDecisionNode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TriggerNode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "order_id",
+          "cycle_id",
+          "order",
+          "hypotheses",
+          "missing_links",
+          "complete"
+        ],
+        "title": "DecisionTrailOut",
+        "type": "object"
+      },
       "DecisionType": {
         "description": "Strategy Manager selection outcome (BRD §17 step 4).",
         "enum": [
@@ -594,6 +858,45 @@
           "reason"
         ],
         "title": "FailedLeg",
+        "type": "object"
+      },
+      "FillNode": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "leg_symbol": {
+            "title": "Leg Symbol",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "number"
+          },
+          "slippage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slippage"
+          }
+        },
+        "required": [
+          "id",
+          "leg_symbol",
+          "qty",
+          "price"
+        ],
+        "title": "FillNode",
         "type": "object"
       },
       "FillOut": {
@@ -967,6 +1270,74 @@
         "title": "HedgeObjective",
         "type": "object"
       },
+      "HypothesisNode": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legs": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legs"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "strategy_type": {
+            "title": "Strategy Type",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "strategy_type",
+          "verdict",
+          "selected"
+        ],
+        "title": "HypothesisNode",
+        "type": "object"
+      },
       "LlmDebugResponse": {
         "properties": {
           "api_key_configured": {
@@ -1047,6 +1418,64 @@
           }
         },
         "title": "MarketState",
+        "type": "object"
+      },
+      "MonitoringEventNode": {
+        "properties": {
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "fired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fired At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "trigger_type": {
+            "title": "Trigger Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "trigger_type"
+        ],
+        "title": "MonitoringEventNode",
         "type": "object"
       },
       "MonitoringEventOut": {
@@ -1663,6 +2092,71 @@
         "title": "OrderConstraints",
         "type": "object"
       },
+      "OrderNode": {
+        "properties": {
+          "broker_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Order Id"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "fills": {
+            "items": {
+              "$ref": "#/components/schemas/FillNode"
+            },
+            "title": "Fills",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legs": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legs"
+          },
+          "order_class": {
+            "title": "Order Class",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "order_class",
+          "status",
+          "submitted_at",
+          "fills"
+        ],
+        "title": "OrderNode",
+        "type": "object"
+      },
       "OrderOut": {
         "properties": {
           "broker_order_id": {
@@ -2076,6 +2570,44 @@
         "title": "PortfolioState",
         "type": "object"
       },
+      "PositionNode": {
+        "properties": {
+          "asset_class": {
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "avg_price": {
+            "title": "Avg Price",
+            "type": "number"
+          },
+          "market_value": {
+            "title": "Market Value",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "number"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "qty",
+          "avg_price",
+          "market_value",
+          "asset_class",
+          "side"
+        ],
+        "title": "PositionNode",
+        "type": "object"
+      },
       "PositionOut": {
         "properties": {
           "asset_class": {
@@ -2112,6 +2644,140 @@
           "side"
         ],
         "title": "PositionOut",
+        "type": "object"
+      },
+      "ReassessmentNode": {
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "trigger_event_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Event Id"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "outcome",
+          "reason"
+        ],
+        "title": "ReassessmentNode",
+        "type": "object"
+      },
+      "RiskApprovalNode": {
+        "properties": {
+          "checks": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checks"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "modifications": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modifications"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          },
+          "violations": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Violations"
+          },
+          "warnings": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warnings"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "verdict"
+        ],
+        "title": "RiskApprovalNode",
         "type": "object"
       },
       "RiskCheck": {
@@ -2514,6 +3180,77 @@
         "title": "StrategyDecision",
         "type": "object"
       },
+      "StrategyDecisionNode": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "alternatives": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternatives"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "selected_hypothesis_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Hypothesis Id"
+          }
+        },
+        "required": [
+          "id",
+          "cycle_id",
+          "action",
+          "rationale"
+        ],
+        "title": "StrategyDecisionNode",
+        "type": "object"
+      },
       "StrategyDecisionOut": {
         "properties": {
           "action": {
@@ -2761,9 +3498,33 @@
         "title": "StrategyType",
         "type": "string"
       },
+      "TriggerNode": {
+        "properties": {
+          "monitoring_events": {
+            "items": {
+              "$ref": "#/components/schemas/MonitoringEventNode"
+            },
+            "title": "Monitoring Events",
+            "type": "array"
+          },
+          "reassessments": {
+            "items": {
+              "$ref": "#/components/schemas/ReassessmentNode"
+            },
+            "title": "Reassessments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "monitoring_events",
+          "reassessments"
+        ],
+        "title": "TriggerNode",
+        "type": "object"
+      },
       "TriggerObservation": {
         "additionalProperties": false,
-        "description": "One evaluated trigger — what was observed against its threshold.",
+        "description": "One evaluated trigger — what was observed against its threshold.\n\n``is_emergency`` marks a catastrophic breach that bypasses the\npost-adjustment cooldown window (BRD §27); normal breaches leave it ``False``.",
         "properties": {
           "breached": {
             "default": true,
@@ -2780,6 +3541,11 @@
               }
             ],
             "title": "Detail"
+          },
+          "is_emergency": {
+            "default": false,
+            "title": "Is Emergency",
+            "type": "boolean"
           },
           "observed_at": {
             "format": "date-time",
@@ -3152,6 +3918,49 @@
         ]
       }
     },
+    "/decision-trail/{order_id}": {
+      "get": {
+        "description": "Return the full linked reasoning chain behind ``order_id``.\n\n404 only when the order does not exist; a downstream gap is reported in\n``missing_links`` with ``complete: false``, never omitted.",
+        "operationId": "decision_trail_decision_trail__order_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionTrailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decision Trail",
+        "tags": [
+          "decision-trail"
+        ]
+      }
+    },
     "/execute": {
       "post": {
         "description": "Execute an approved decision: plan → pre-flight → order → result.\n\nReturns:\n    The :class:`ExecutionResult` (200), including a truthful ``FAILED`` on a\n    pre-flight abort or a broker rejection.\n\nRaises:\n    HTTPException 422: the decision is not ``APPROVE`` / ``MODIFY``, carries\n        no approved hypothesis, or cannot be turned into a plan.\n    HTTPException 500: execution ran but persisting its result failed.",
@@ -3501,6 +4310,52 @@
           }
         },
         "summary": "Get Pnl Series",
+        "tags": [
+          "pnl"
+        ]
+      }
+    },
+    "/pnl/vs-benchmark": {
+      "get": {
+        "description": "Hedged portfolio vs unhedged benchmark, showing the hedge cushioning a drawdown.\n\nBefore any hedge is on, the hedged and unhedged curves coincide; once a\nprotective put pays off inside a drop, ``hedged_max_drawdown`` falls below\n``unhedged_max_drawdown`` and ``is_cushioned`` is ``True`` (BRD §36).",
+        "operationId": "get_pnl_vs_benchmark_pnl_vs_benchmark_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkComparisonOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pnl Vs Benchmark",
         "tags": [
           "pnl"
         ]

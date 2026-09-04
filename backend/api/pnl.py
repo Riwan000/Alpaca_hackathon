@@ -1,14 +1,14 @@
-"""P&L and Performance read-back endpoints — task P8-BE-1.
+"""P&L and Performance read-back endpoints — tasks P8-BE-1, P8-BE-2.
 
 Exposes:
 - `GET /pnl/series` — ordered performance points time series
 - `GET /pnl/current` — latest performance snapshot
+- `GET /pnl/vs-benchmark` — hedged vs unhedged-benchmark comparison (BRD §36)
 """
 
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -87,3 +87,38 @@ def get_pnl_series(
         )
         for r in series
     ]
+
+
+class BenchmarkPointOut(BaseModel):
+    ts: _dt.datetime | None = None
+    cycle_id: str
+    hedged_pnl: float
+    unhedged_pnl: float
+    hedge_cushion: float
+    hedged_drawdown: float
+    unhedged_drawdown: float
+
+
+class BenchmarkComparisonOut(BaseModel):
+    points: list[BenchmarkPointOut]
+    hedged_max_drawdown: float
+    unhedged_max_drawdown: float
+    drawdown_reduction: float
+    hedge_cushion: float
+    hedge_cost: float
+    is_cushioned: bool
+
+
+@router.get("/pnl/vs-benchmark", response_model=BenchmarkComparisonOut)
+def get_pnl_vs_benchmark(
+    limit: int = Query(default=100, ge=1, le=1000),
+    engine: Engine = Depends(get_readback_engine),
+) -> BenchmarkComparisonOut:
+    """Hedged portfolio vs unhedged benchmark, showing the hedge cushioning a drawdown.
+
+    Before any hedge is on, the hedged and unhedged curves coincide; once a
+    protective put pays off inside a drop, ``hedged_max_drawdown`` falls below
+    ``unhedged_max_drawdown`` and ``is_cushioned`` is ``True`` (BRD §36).
+    """
+    repo = PerformanceRepository(engine)
+    return BenchmarkComparisonOut.model_validate(repo.get_benchmark_comparison(limit=limit))

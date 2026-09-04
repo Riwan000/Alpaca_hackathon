@@ -231,6 +231,25 @@ class PortfolioSnapshotRepository:
             )
         return self._to_record(row)
 
+    def for_cycle(self, cycle_id: str) -> PortfolioSnapshotRecord | None:
+        """The snapshot recorded for ``cycle_id`` (latest ``id`` wins).
+
+        One analysis pass normally writes exactly one snapshot per cycle; a
+        re-run makes the newest row the live one. Used by the decision-trail
+        endpoint (P8-BE-4) to resolve a cycle's analysis context.
+        """
+        with self._engine.connect() as conn:
+            row = (
+                conn.execute(
+                    select(self._table)
+                    .where(self._table.c.cycle_id == cycle_id)
+                    .order_by(self._table.c.id.desc())
+                )
+                .mappings()
+                .first()
+            )
+        return self._to_record(row)
+
     def count(self) -> int:
         """Number of rows currently in ``portfolio_snapshots``."""
         with self._engine.connect() as conn:

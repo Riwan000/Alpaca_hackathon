@@ -15,6 +15,7 @@ from backend import __version__
 from backend.api import (
     analyze,
     debug,
+    decision_trail,
     exec_readback,
     execute,
     health,
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(workflow.router)
     app.include_router(monitoring.router)
     app.include_router(pnl.router)
+    app.include_router(decision_trail.router)
     app.include_router(stubs.router)
     return app
 
