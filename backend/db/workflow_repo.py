@@ -11,13 +11,18 @@ import dataclasses
 import datetime as _dt
 from typing import Any
 
-from sqlalchemy import MetaData, Table, desc, insert, select, update
+from sqlalchemy import MetaData, Table, desc, func, insert, select
 from sqlalchemy.engine import Engine
 
 from backend.models.enums import WorkflowNode, WorkflowStatus
 
 _STATE_TABLE = "workflow_state"
 _TRANSITIONS_TABLE = "workflow_transitions"
+
+#: A cycle whose latest state carries one of these — either as its ``status`` or
+#: as its ``current_node`` — is finished and never resumed.
+_TERMINAL_STATUSES = ("COMPLETED", "FAILED")
+_TERMINAL_NODES = ("COMPLETED", "FAILED")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,6 +139,35 @@ class WorkflowRepository:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+    def latest_unfinished_cycle(self) -> str | None:
+        """Return the ``cycle_id`` of the most recently touched cycle that has
+        not finished, or ``None`` if every cycle is terminal.
+
+        Used on a cold start to answer "was a cycle interrupted — should I resume
+        it rather than begin a new one?". A cycle counts as unfinished when its
+        latest ``workflow_state`` row is neither ``COMPLETED`` nor ``FAILED`` (by
+        status or node); ``RUNNING``, ``PENDING`` and ``HALTED`` all resume.
+        """
+        latest_ids = (
+            select(func.max(self._state_table.c.id).label("mid"))
+            .group_by(self._state_table.c.cycle_id)
+            .subquery()
+        )
+        with self._engine.connect() as conn:
+            row = (
+                conn.execute(
+                    select(self._state_table)
+                    .join(latest_ids, self._state_table.c.id == latest_ids.c.mid)
+                    .where(self._state_table.c.status.notin_(_TERMINAL_STATUSES))
+                    .where(self._state_table.c.current_node.notin_(_TERMINAL_NODES))
+                    .order_by(desc(self._state_table.c.id))
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+        return row["cycle_id"] if row else None
 
     def get_transitions(self, cycle_id: str) -> list[WorkflowTransitionRecord]:
         """Fetch transition history for ``cycle_id`` in chronological order."""
