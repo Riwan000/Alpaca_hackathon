@@ -701,9 +701,9 @@ replaces, or removes protection rather than just accumulating puts.
   - [x] Confirm — `GET /monitoring/state` and `GET /monitoring/events` implemented in `backend/api/monitoring.py` and tested in `tests/api/test_monitoring_readback.py`.
 
 ### Backend
-- [ ] **P7-BE-1** — Monitoring Agent — Level 1 deterministic checks: drawdown, hedge drift, volatility, exposure, expiration, major state change. Does not trade.
+- [x] **P7-BE-1** — Monitoring Agent — Level 1 deterministic checks: drawdown, hedge drift, volatility, exposure, expiration, major state change. Does not trade.
   - Test: `tests/agents/test_monitor_level1.py` — each check fires only past its threshold; the agent has no execution path (asserted — no order calls).
-  - [ ] Confirm — feed a drifted portfolio; a `hedge_drift` event fires, no order is placed.
+  - [x] Confirm — `backend/agents/monitoring/agent.py::MonitoringAgent` implements Level-1 deterministic checks (`check_drawdown`, `check_hedge_drift`, `check_volatility`, `check_exposure`, `check_expiration`, `check_major_state_change`) across quantitative thresholds, snapshots `MonitoringState`, and persists events to `monitoring_events` / `monitoring_state` via `MonitoringRepository`. Invariant verified: no execution attributes/methods exist and feeding a drifted portfolio produces a `PORTFOLIO_DELTA` trigger observation with zero orders placed. 12/12 tests passing in `tests/agents/test_monitor_level1.py`.
 - [ ] **P7-BE-2** — Trigger evaluators: hedge drift, drawdown change, volatility change, event, expiration, emergency.
   - Test: `tests/agents/test_triggers.py` — one focused case per trigger type → correct type + payload.
   - [ ] Confirm — synthesize each condition; the matching trigger type is emitted.

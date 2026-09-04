@@ -19,7 +19,11 @@ __all__ = ["MonitoringState", "TriggerObservation"]
 
 
 class TriggerObservation(Contract):
-    """One evaluated trigger — what was observed against its threshold."""
+    """One evaluated trigger — what was observed against its threshold.
+
+    ``is_emergency`` marks a catastrophic breach that bypasses the
+    post-adjustment cooldown window (BRD §27); normal breaches leave it ``False``.
+    """
 
     trigger_type: TriggerType
     observed_at: datetime
@@ -27,6 +31,7 @@ class TriggerObservation(Contract):
     threshold: float | None = None
     detail: str | None = None
     breached: bool = True
+    is_emergency: bool = False
 
 
 class MonitoringState(Contract):
