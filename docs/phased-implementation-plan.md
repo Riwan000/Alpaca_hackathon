@@ -574,9 +574,9 @@ The non-negotiable safety layer, then the first real paper trade.
 - [x] **P5-BE-15** — `POST /execute` endpoint — decision → plan → order → result.
   - Test: `tests/api/test_execute.py` — 200; body validates as `ExecutionResult`; persists risk check + order + fills.
   - [x] Confirm — `backend/api/execute.py` `POST /execute` takes `{decision, context, approval_id?, preflight?}`; it 422s a non-`APPROVE`/`MODIFY` decision, persists the risk evaluation as a `risk_checks` row, builds the plan (P5-BE-10), runs pre-flight (P5-BE-11 — abort → `FAILED` result + `execution_failures` row, **no order**), submits the combo (P5-BE-12), maps + persists the result (P5-BE-13/14). Broker is a FastAPI dependency (`get_execution_broker`) the tests override with a fake; the DB engine is the shared `get_readback_engine` so `GET /orders` sees the cycle immediately. `test_execute_persists_risk_check_order_and_fills` → 200, one `risk_checks` (APPROVE), one `orders` (FILLED, broker id `combo-exec-1`), two `fills`; `test_execute_applies_modify_before_submitting` → the submitted combo carries the reduced `qty`.
-- [ ] **P5-BE-16** — Tests — deterministic reject blocks an LLM approve; a partial fill yields a truthful result. *(test task for P5-BE-8/13)*
-  - Test: the two suites above.
-  - [ ] Confirm — `pytest tests/agents/test_risk_agent.py tests/agents/test_partial_fill.py -q` green.
+- [x] **P5-BE-16** — Tests — deterministic reject blocks an LLM approve; a partial fill yields a truthful result. *(test task for P5-BE-8/13)*
+  - Test: the two suites above, plus `tests/agents/test_risk_exec_invariants.py` pinning the two cross-agent invariants where the risk gate and the Execution Agent compose.
+  - [x] Confirm — `pytest tests/agents/test_risk_agent.py tests/agents/test_partial_fill.py -q` green (17 passed). `test_risk_exec_invariants.py` adds: `RiskAgent.review` on a 40k over-budget plan + an approving stub LLM → `REJECT` with `mock_llm.calls == []`, and that `RiskDecision` fed to `build_execution_plan` raises `ExecutionPlanError` — the reject blocks execution, not just the verdict; a clean-plan control still flows APPROVE → plan. For the fill path, a combo whose broker header claims `filled` while a leg shows `filled_qty 0` is still `PARTIALLY_FILLED` with the unfilled leg in `failed_legs` and a recovery action recorded (`CANCEL_UNFILLED_LEGS`, or `UNWIND_FILLED_LEGS` when a filled short is left naked).
 
 ### Frontend
 - [x] **P5-FE-1** — `HedgeStatus` — current strategy, hedge cost, protection level, expiration, hedge P&L.
