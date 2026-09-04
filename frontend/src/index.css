@@ -15,6 +15,10 @@
     --brand-spruce: #1B4332;
     --brand-gold: #A67C37;
     --brand-teal: #0D9488;
+    --status-safe: #15803D;
+    --status-warning: #D97706;
+    --status-danger: #BE123C;
+    --status-info: #0284C7;
   }
 
   [data-theme='dark'], .dark {
@@ -29,6 +33,10 @@
     --brand-spruce: #2D6A4F;
     --brand-gold: #C29B38;
     --brand-teal: #14B8A6;
+    --status-safe: #22C55E;
+    --status-warning: #F59E0B;
+    --status-danger: #F43F5E;
+    --status-info: #38BDF8;
   }
 
   * {

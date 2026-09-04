@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sliders, Shield, Cpu, Save, Check } from 'lucide-react';
 import { useHedgeContext } from '../api/queries';
 
-const CONFIG_STORAGE_KEY = 'aegis_user_configuration';
+export const CONFIG_STORAGE_KEY = 'aegis_user_configuration';
 
 export interface UserConfiguration {
   drawdownTolerance: number;
@@ -17,7 +17,7 @@ export interface UserConfiguration {
   };
 }
 
-const DEFAULT_CONFIG: UserConfiguration = {
+export const DEFAULT_CONFIG: UserConfiguration = {
   drawdownTolerance: 10,
   targetHedgeRatio: 20,
   maxBudget: 5,
@@ -30,20 +30,22 @@ const DEFAULT_CONFIG: UserConfiguration = {
   },
 };
 
+export function getUserConfiguration(): UserConfiguration {
+  try {
+    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (saved) {
+      return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_CONFIG;
+}
+
 export const ConfigurationPage: React.FC = () => {
   const contextQuery = useHedgeContext();
 
-  const [config, setConfig] = useState<UserConfiguration>(() => {
-    try {
-      const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
-      if (saved) {
-        return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
-      }
-    } catch {
-      // ignore
-    }
-    return DEFAULT_CONFIG;
-  });
+  const [config, setConfig] = useState<UserConfiguration>(getUserConfiguration);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -82,6 +84,8 @@ export const ConfigurationPage: React.FC = () => {
 
     setValidationError(null);
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    window.dispatchEvent(new CustomEvent('aegis-config-updated', { detail: config }));
+    window.dispatchEvent(new Event('storage'));
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -89,18 +93,18 @@ export const ConfigurationPage: React.FC = () => {
   return (
     <div className="space-y-6" data-testid="configuration-page">
       {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-4">
         <div>
-          <h1 className="text-2xl font-bold font-serif text-white">
+          <h1 className="text-2xl font-bold font-serif text-[var(--text-main)]">
             Agent & Risk Configuration
           </h1>
-          <p className="text-xs text-slate-400 font-mono mt-1">
+          <p className="text-xs text-[var(--text-muted)] font-mono mt-1">
             RISK LIMITS • HEDGE PREFERENCES • AUTONOMY POLICIES
           </p>
         </div>
         <div className="flex items-center gap-3">
           {savedSuccess && (
-            <span data-testid="save-success-badge" className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono">
+            <span data-testid="save-success-badge" className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[var(--status-safe)]/10 text-[var(--status-safe)] border border-[var(--status-safe)]/30 text-xs font-mono">
               <Check className="w-3.5 h-3.5" />
               Saved Successfully!
             </span>
@@ -109,7 +113,7 @@ export const ConfigurationPage: React.FC = () => {
             type="button"
             data-testid="save-config-btn"
             onClick={handleSave}
-            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-mono font-medium flex items-center gap-1.5 rounded transition-colors shadow-sm"
+            className="px-4 py-2 bg-[var(--brand-spruce)] hover:bg-[#143225] text-white text-xs font-mono font-medium flex items-center gap-1.5 rounded transition-colors shadow-sm"
           >
             <Save className="w-3.5 h-3.5 text-white" />
             Save Configuration
@@ -118,7 +122,7 @@ export const ConfigurationPage: React.FC = () => {
       </div>
 
       {validationError && (
-        <div data-testid="validation-error" className="p-3 bg-rose-950/60 border border-rose-800 rounded text-rose-300 text-xs font-mono">
+        <div data-testid="validation-error" className="p-3 bg-[var(--status-danger)]/10 border border-[var(--status-danger)]/30 rounded text-rose-300 text-xs font-mono">
           {validationError}
         </div>
       )}
@@ -126,43 +130,43 @@ export const ConfigurationPage: React.FC = () => {
       {/* Grid of Configuration Panels */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Risk Preferences */}
-        <section className="border border-slate-800 bg-slate-900 rounded-lg p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-            <Shield className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-sm font-serif font-bold text-white">
+        <section className="border border-[var(--border-color)] bg-[var(--bg-card)] rounded-lg p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
+            <Shield className="w-4 h-4 text-[var(--status-safe)]" />
+            <h2 className="text-sm font-serif font-bold text-[var(--text-main)]">
               Risk Preferences
             </h2>
           </div>
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-1">
                 Max Allowable Drawdown (%)
               </label>
               <input
                 type="number"
                 value={config.drawdownTolerance}
                 onChange={(e) => setConfig({ ...config, drawdownTolerance: parseFloat(e.target.value) || 0 })}
-                className="w-full p-2 border border-slate-800 bg-slate-950 rounded font-mono text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
                 data-testid="input-drawdown-tolerance"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-1">
                 Target Protection Ratio (%)
               </label>
               <input
                 type="number"
                 value={config.targetHedgeRatio}
                 onChange={(e) => setConfig({ ...config, targetHedgeRatio: parseFloat(e.target.value) || 0 })}
-                className="w-full p-2 border border-slate-800 bg-slate-950 rounded font-mono text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
                 data-testid="input-target-hedge"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-1">
                 Max Hedge Cost (% of AUM / cycle)
               </label>
               <input
@@ -170,7 +174,7 @@ export const ConfigurationPage: React.FC = () => {
                 step="0.5"
                 value={config.maxBudget}
                 onChange={(e) => setConfig({ ...config, maxBudget: parseFloat(e.target.value) || 0 })}
-                className="w-full p-2 border border-slate-800 bg-slate-950 rounded font-mono text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
                 data-testid="input-max-budget"
               />
             </div>
@@ -178,21 +182,21 @@ export const ConfigurationPage: React.FC = () => {
         </section>
 
         {/* Hedge Preferences */}
-        <section className="border border-slate-800 bg-slate-900 rounded-lg p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <section className="border border-[var(--border-color)] bg-[var(--bg-card)] rounded-lg p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
             <Sliders className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-serif font-bold text-white">
+            <h2 className="text-sm font-serif font-bold text-[var(--text-main)]">
               Hedge Preferences
             </h2>
           </div>
 
           <div className="space-y-3 text-xs">
             <div>
-              <span className="text-[10px] font-mono uppercase text-slate-400 block mb-2">
+              <span className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-2">
                 Permitted Option Structures
               </span>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 font-mono text-xs text-slate-300">
+                <label className="flex items-center gap-2 font-mono text-xs text-[var(--text-main)]">
                   <input
                     type="checkbox"
                     checked={config.permittedStructures.protectivePut}
@@ -206,7 +210,7 @@ export const ConfigurationPage: React.FC = () => {
                   />
                   <span>Protective Put</span>
                 </label>
-                <label className="flex items-center gap-2 font-mono text-xs text-slate-300">
+                <label className="flex items-center gap-2 font-mono text-xs text-[var(--text-main)]">
                   <input
                     type="checkbox"
                     checked={config.permittedStructures.bearPutSpread}
@@ -220,7 +224,7 @@ export const ConfigurationPage: React.FC = () => {
                   />
                   <span>Bear Put Spread</span>
                 </label>
-                <label className="flex items-center gap-2 font-mono text-xs text-slate-300">
+                <label className="flex items-center gap-2 font-mono text-xs text-[var(--text-main)]">
                   <input
                     type="checkbox"
                     checked={config.permittedStructures.collar}
@@ -238,14 +242,14 @@ export const ConfigurationPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-1">
                 Deadband Buffer (%)
               </label>
               <input
                 type="number"
                 value={config.deadbandBuffer}
                 onChange={(e) => setConfig({ ...config, deadbandBuffer: parseFloat(e.target.value) || 0 })}
-                className="w-full p-2 border border-slate-800 bg-slate-950 rounded font-mono text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
                 data-testid="input-deadband"
               />
             </div>
@@ -253,17 +257,17 @@ export const ConfigurationPage: React.FC = () => {
         </section>
 
         {/* Autonomy Settings */}
-        <section className="border border-slate-800 bg-slate-900 rounded-lg p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <section className="border border-[var(--border-color)] bg-[var(--bg-card)] rounded-lg p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
             <Cpu className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-serif font-bold text-white">
+            <h2 className="text-sm font-serif font-bold text-[var(--text-main)]">
               Autonomy & Policies
             </h2>
           </div>
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="text-[10px] font-mono uppercase text-slate-400 block mb-2">
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-2">
                 Execution Autonomy Mode
               </label>
               <select
@@ -275,7 +279,7 @@ export const ConfigurationPage: React.FC = () => {
                     autonomyMode: e.target.value as UserConfiguration['autonomyMode'],
                   })
                 }
-                className="w-full p-2 border border-slate-800 bg-slate-950 rounded font-mono text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
               >
                 <option value="FULL_AUTONOMY">Full Autonomy (Execute on Approval)</option>
                 <option value="HUMAN_IN_THE_LOOP">Human in the Loop (Require Confirmation)</option>
@@ -283,8 +287,8 @@ export const ConfigurationPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded text-xs text-slate-400">
-              <span className="font-semibold text-slate-300">Policy: </span>
+            <div className="p-3 bg-[var(--bg-subtle)]/70 border border-[var(--border-color)]/80 rounded text-xs text-[var(--text-muted)]">
+              <span className="font-semibold text-[var(--text-main)]">Policy: </span>
               {config.autonomyMode === 'FULL_AUTONOMY'
                 ? 'Autonomous paper trading enabled. Agent executes approved hedges directly via Alpaca broker.'
                 : config.autonomyMode === 'HUMAN_IN_THE_LOOP'

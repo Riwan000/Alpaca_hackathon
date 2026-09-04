@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, ArrowUpRight, AlertCircle, BookOpen } from 'lucide-react';
 import {
@@ -32,14 +32,31 @@ import { ReassessmentHistory } from '../components/ReassessmentHistory';
 import { TradeHistory, type TradeItem } from '../components/TradeHistory';
 import { DecisionTrail, type DecisionTrailData } from '../components/DecisionTrail';
 import { DemoWalkthrough } from '../components/DemoWalkthrough';
+import { getUserConfiguration, type UserConfiguration } from './ConfigurationPage';
 
 export const DashboardPage: React.FC = () => {
   const [selectedTrade, setSelectedTrade] = useState<TradeItem | null>(null);
+  const [userConfig, setUserConfig] = useState<UserConfiguration>(getUserConfiguration);
+
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      setUserConfig(getUserConfiguration());
+    };
+    window.addEventListener('storage', handleConfigUpdate);
+    window.addEventListener('aegis-config-updated', handleConfigUpdate);
+    return () => {
+      window.removeEventListener('storage', handleConfigUpdate);
+      window.removeEventListener('aegis-config-updated', handleConfigUpdate);
+    };
+  }, []);
 
   const contextQuery = useHedgeContext();
   const portfolioQuery = usePortfolioLatest();
   const strategyQuery = useStrategyDecision();
-  const hypothesesQuery = useStrategyHypotheses();
+  // Hypotheses are persisted across every cycle ever run; without a cycle_id filter
+  // this returns the full history (e.g. 4 hedge-family hypotheses x N past cycles),
+  // which duplicates strategy types in the comparison grid. Scope to the current cycle.
+  const hypothesesQuery = useStrategyHypotheses(contextQuery.data?.cycle_id);
   const agentRunsQuery = useAgentRuns();
   const monitoringQuery = useMonitoringState();
   const monitoringEventsQuery = useMonitoringEvents();
@@ -152,22 +169,23 @@ export const DashboardPage: React.FC = () => {
     pnlCurrentQuery.refetch();
     pnlSeriesQuery.refetch();
     setSelectedTrade(null);
+    setUserConfig(getUserConfiguration());
   };
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       {/* Page Title / Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-4">
         <div>
-          <h1 className="text-2xl font-bold font-serif text-white">
+          <h1 className="text-2xl font-bold font-serif text-[var(--text-main)]">
             Portfolio Risk & Strategy Dashboard
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-xs text-slate-400 font-mono">
+            <p className="text-xs text-[var(--text-muted)] font-mono">
               REAL-TIME HEDGE METRICS • CONTINUOUS ADAPTIVE PROTECTION
               {context && ` • CYCLE ${context.cycle_id.toUpperCase()}`}
             </p>
-            <span className="text-[10px] font-mono text-slate-400" data-testid="portfolio-aum">
+            <span className="text-[10px] font-mono text-[var(--text-muted)]" data-testid="portfolio-aum">
               AUM {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio?.total_value ?? 1000000)}
             </span>
           </div>
@@ -188,7 +206,7 @@ export const DashboardPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           {isLoading && (
             <span
-              className="flex items-center gap-1 text-xs font-mono text-slate-400"
+              className="flex items-center gap-1 text-xs font-mono text-[var(--text-muted)]"
               data-testid="loading-indicator"
             >
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -206,12 +224,12 @@ export const DashboardPage: React.FC = () => {
             to="/adaptation"
             className="px-3 py-2 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 text-xs font-mono font-medium flex items-center gap-1 border border-indigo-700/60 rounded transition-colors"
           >
-            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+            <BookOpen className="w-3.5 h-3.5 text-[var(--brand-teal)]" />
             Adaptation Story
           </Link>
           <Link
             to={`/strategy/${context?.cycle_id || 'cyc-001'}`}
-            className="px-3 py-2 bg-slate-800 text-white text-xs font-mono font-medium flex items-center gap-1 hover:bg-slate-700 rounded transition-colors border border-slate-700"
+            className="px-3 py-2 bg-[var(--bg-subtle)] text-[var(--text-main)] text-xs font-mono font-medium flex items-center gap-1 hover:bg-[var(--bg-subtle-hover)] rounded transition-colors border border-[var(--border-dark)]"
           >
             Strategy Details
             <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
@@ -222,7 +240,7 @@ export const DashboardPage: React.FC = () => {
       {/* Global Error Banner */}
       {error && (
         <div
-          className="p-4 border border-rose-800 bg-rose-950/20 text-xs font-mono text-rose-400 flex items-center gap-2 rounded-lg"
+          className="p-4 border border-[var(--status-danger)]/30 bg-[var(--status-danger)]/10 text-xs font-mono text-[var(--status-danger)] flex items-center gap-2 rounded-lg"
           data-testid="dashboard-error"
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -252,7 +270,16 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-5">
           <HedgeDriftGauge
             currentHedgeRatio={monitoringQuery.data?.hedge_ratio ?? 0.19}
-            targetHedgeRatio={monitoringQuery.data?.target_hedge_ratio ?? 0.20}
+            targetHedgeRatio={
+              userConfig?.targetHedgeRatio !== undefined
+                ? userConfig.targetHedgeRatio / 100
+                : (monitoringQuery.data?.target_hedge_ratio ?? 0.20)
+            }
+            deadband={
+              userConfig?.deadbandBuffer !== undefined
+                ? userConfig.deadbandBuffer / 100
+                : 0.05
+            }
           />
         </div>
         <div className="lg:col-span-7">
@@ -287,7 +314,25 @@ export const DashboardPage: React.FC = () => {
       <Recommendation
         decision={strategy}
         currentHedge={context?.current_hedge}
-        objective={context?.objective}
+        objective={
+          context?.objective
+            ? {
+                ...context.objective,
+                target_hedge_ratio:
+                  userConfig?.targetHedgeRatio !== undefined
+                    ? userConfig.targetHedgeRatio / 100
+                    : context.objective.target_hedge_ratio,
+                max_hedge_budget_pct:
+                  userConfig?.maxBudget !== undefined
+                    ? userConfig.maxBudget / 100
+                    : context.objective.max_hedge_budget_pct,
+                drawdown_tolerance_pct:
+                  userConfig?.drawdownTolerance !== undefined
+                    ? userConfig.drawdownTolerance / 100
+                    : context.objective.drawdown_tolerance_pct,
+              }
+            : context?.objective
+        }
         isLoading={strategyQuery.isLoading}
         error={strategyQuery.error}
       />

@@ -104,7 +104,11 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" data-testid="hypotheses-grid">
-          {hypotheses.map((hypo, idx) => {
+          {hypotheses.map((rawHypo, idx) => {
+            // Some sources (raw /strategy/hypotheses payloads) key the strategy name as
+            // `strategy_type` instead of `strategy`; normalize so this component never
+            // dereferences an undefined key regardless of which shape it receives.
+            const hypo = { ...rawHypo, strategy: rawHypo.strategy ?? (rawHypo as { strategy_type?: string }).strategy_type };
             const isSelected = selectedStrategy === hypo.strategy;
             const isViable = hypo.viable;
             const compRow = comparisonRows.find((r) => r.strategy === hypo.strategy);
@@ -112,7 +116,7 @@ export const StrategyComparison: React.FC<StrategyComparisonProps> = ({
 
             return (
               <div
-                key={hypo.strategy || idx}
+                key={`${hypo.strategy || 'unknown'}-${idx}`}
                 className={`border p-4 flex flex-col justify-between transition-all relative ${
                   isSelected
                     ? 'border-[var(--brand-spruce)] bg-[var(--bg-subtle)]/50 shadow-sm ring-1 ring-[var(--brand-spruce)]'
