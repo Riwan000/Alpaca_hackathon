@@ -776,15 +776,15 @@ Assemble the full experience and make the agent's behavior visible.
 - [x] **P8-BE-1** — P&L endpoints — time series + current snapshot.
   - Test: `tests/api/test_pnl.py` — series endpoint returns ordered points; snapshot matches the latest `performance` row.
   - [x] Confirm — `GET /pnl/current` and `GET /pnl/series` implemented in `backend/api/pnl.py` and tested in `tests/api/test_pnl.py`.
-- [ ] **P8-BE-2** — Unhedged-benchmark computation (hedged vs unhedged, BRD §36).
+- [x] **P8-BE-2** — Unhedged-benchmark computation (hedged vs unhedged, BRD §36).
   - Test: `tests/api/test_pnl.py::test_vs_benchmark` — before any hedge, hedged == unhedged; after a protective put in a drop, hedged drawdown < unhedged.
-  - [ ] Confirm — comparison endpoint shows the hedge cushioning a simulated drawdown.
+  - [x] Confirm — `GET /pnl/vs-benchmark` (`backend/api/pnl.py`) shows the hedge cushioning a simulated drawdown; `PerformanceRepository.get_benchmark_comparison` computes it; tests pass.
 - [x] **P8-BE-3** — Observability polish — structured log line per: agent invocation, input summary, output, decision, tool call, risk check, order, fill, error, reassessment trigger.
   - Test: `tests/agents/test_observability.py` — a full cycle emits at least one structured record of each type with a shared `cycle_id`.
   - [x] Confirm — `backend/observability.py` emits structured JSON logging for all 10 cycle event categories; `tests/agents/test_observability.py` passes.
-- [ ] **P8-BE-4** — Decision-trail endpoint — one trade → risk approval → strategy decision → hypotheses → analysis context → trigger.
+- [x] **P8-BE-4** — Decision-trail endpoint — one trade → risk approval → strategy decision → hypotheses → analysis context → trigger.
   - Test: `tests/api/test_decision_trail.py` — given an `order_id`, returns the full linked chain; a missing link is reported, not silently dropped.
-  - [ ] Confirm — `curl /decision-trail/<order_id>`; every hop is present and linked.
+  - [x] Confirm — `GET /decision-trail/<order_id>` (`backend/api/decision_trail.py`); every hop is present and linked, a gap is named in `missing_links` rather than dropped; tests pass.
 - [x] **P8-BE-5** — Deployment config — env templating, CORS, health checks, start commands.
   - Test: `tests/ops/test_deploy_config.py` — Dockerfile, Procfile, railway.json, render.yaml, and /health endpoint verified.
   - [x] Confirm — deployment artifacts (`Dockerfile`, `Procfile`, `railway.json`, `render.yaml`, `docker-compose.yml`) established and tested.
