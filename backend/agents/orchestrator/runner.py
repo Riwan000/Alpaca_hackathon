@@ -12,8 +12,10 @@ the node after the last one that finished* instead of replaying the whole
 decision history (Tech-Stack §21). A node that checkpointed is skipped on
 resume; a node killed *inside its body* (before its checkpoint) is re-entered.
 
-The node bodies here are thin placeholders; the Phase 6 backend tasks
-(P6-BE-2 … P6-BE-6) swap each one for the real agent chain. The runner keeps the
+The node bodies here are thin placeholders. The real Phase 3–5 agent chains
+(tasks P6-BE-2 … P6-BE-6) live in :mod:`backend.agents.orchestrator.nodes` as
+LangGraph bodies over ``OrchestratorState``; adapting them to this runner's
+:data:`NodeFn` shape is a later wiring step (P6-BE-7). The runner keeps the
 checkpoint / resume contract stable regardless of what a node does. The one
 obligation on a node body: if it has an external side effect (``EXECUTION``
 submitting an order) it must be **idempotent**, guarding on its *own* persisted
