@@ -361,6 +361,41 @@
         "title": "DecisionType",
         "type": "string"
       },
+      "ExecuteRequest": {
+        "description": "Body for ``POST /execute``: an approved decision + a fresh context.",
+        "properties": {
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id of the risk evaluation clearing this plan; defaults to risk-<cycle>",
+            "title": "Approval Id"
+          },
+          "context": {
+            "$ref": "#/components/schemas/HedgeContext"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/RiskDecision"
+          },
+          "preflight": {
+            "default": true,
+            "description": "re-validate the plan against the fresh context before submit",
+            "title": "Preflight",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decision",
+          "context"
+        ],
+        "title": "ExecuteRequest",
+        "type": "object"
+      },
       "ExecutionPlan": {
         "additionalProperties": false,
         "description": "A ready-to-submit plan built from an approved :class:`RiskDecision`.",
@@ -483,6 +518,18 @@
             },
             "title": "Order Ids",
             "type": "array"
+          },
+          "recovery_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the legging-risk recovery step taken for a non-clean fill (e.g. CANCEL_UNFILLED_LEGS, UNWIND_FILLED_LEGS) — P5-BE-13",
+            "title": "Recovery Action"
           },
           "slippage": {
             "anyOf": [
@@ -3054,6 +3101,48 @@
         "summary": "Llm Debug",
         "tags": [
           "debug"
+        ]
+      }
+    },
+    "/execute": {
+      "post": {
+        "description": "Execute an approved decision: plan → pre-flight → order → result.\n\nReturns:\n    The :class:`ExecutionResult` (200), including a truthful ``FAILED`` on a\n    pre-flight abort or a broker rejection.\n\nRaises:\n    HTTPException 422: the decision is not ``APPROVE`` / ``MODIFY``, carries\n        no approved hypothesis, or cannot be turned into a plan.\n    HTTPException 500: execution ran but persisting its result failed.",
+        "operationId": "execute_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Execute",
+        "tags": [
+          "execution"
         ]
       }
     },

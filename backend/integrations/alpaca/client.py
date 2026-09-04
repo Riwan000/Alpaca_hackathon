@@ -32,6 +32,7 @@ SECRET_KEY_HEADER = "APCA-API-SECRET-KEY"
 
 _ACCOUNT_PATH = "/v2/account"
 _POSITIONS_PATH = "/v2/positions"
+_ORDERS_PATH = "/v2/orders"
 _DEFAULT_TIMEOUT = 10.0
 
 
@@ -137,6 +138,23 @@ class AlpacaClient:
                 f"Alpaca GET {path} returned a non-JSON body ({response.status_code})"
             ) from exc
 
+    def _post(self, path: str, payload: dict[str, Any]) -> Any:
+        try:
+            response = self._client.post(path, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise AlpacaError(
+                f"Alpaca POST {path} -> {exc.response.status_code}: {exc.response.text}"
+            ) from exc
+        except httpx.HTTPError as exc:  # network / timeout / transport errors
+            raise AlpacaError(f"Alpaca POST {path} failed: {exc}") from exc
+        try:
+            return response.json()
+        except ValueError as exc:  # 2xx with a non-JSON body (edge/proxy HTML page)
+            raise AlpacaError(
+                f"Alpaca POST {path} returned a non-JSON body ({response.status_code})"
+            ) from exc
+
     def get_account(self) -> dict[str, Any]:
         """Return the trading account object (``id``, ``account_number``, ...)."""
         return self._get(_ACCOUNT_PATH)
@@ -148,6 +166,19 @@ class AlpacaClient:
             return []
         if not isinstance(data, list):
             raise AlpacaError(f"expected a positions array, got {type(data).__name__}")
+        return data
+
+    def submit_order(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST one order to ``/v2/orders`` and return the created order object.
+
+        ``payload`` is a fully-formed Alpaca order body — a single-leg order or
+        an ``order_class: "mleg"`` combo (see
+        :mod:`backend.integrations.alpaca.orders`). Any non-2xx response, a
+        transport error, or a non-JSON body surfaces as :class:`AlpacaError`.
+        """
+        data = self._post(_ORDERS_PATH, payload)
+        if not isinstance(data, dict):
+            raise AlpacaError(f"expected an order object, got {type(data).__name__}")
         return data
 
     def close(self) -> None:

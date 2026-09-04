@@ -1,4 +1,4 @@
-"""Alpaca trading API integration — tasks P1-BE-7 and P3-BE-3."""
+"""Alpaca trading API integration — tasks P1-BE-7, P3-BE-3 and P5-BE-12."""
 
 from backend.integrations.alpaca.client import (
     KEY_ID_HEADER,
@@ -10,6 +10,15 @@ from backend.integrations.alpaca.client import (
     AlpacaError,
     build_auth_headers,
     resolve_alpaca_config,
+)
+from backend.integrations.alpaca.orders import (
+    OrderSubmitter,
+    SubmitOutcome,
+    build_mleg_order_payload,
+    build_occ_symbol,
+    build_single_leg_payloads,
+    occ_symbol_for_leg,
+    submit_plan,
 )
 from backend.integrations.alpaca.options import (
     MAX_RELATIVE_SPREAD,
@@ -36,10 +45,17 @@ __all__ = [
     "OptionChainError",
     "OptionContract",
     "OptionGreeks",
+    "OrderSubmitter",
+    "SubmitOutcome",
     "build_auth_headers",
+    "build_mleg_order_payload",
+    "build_occ_symbol",
+    "build_single_leg_payloads",
     "is_illiquid",
     "normalize_right",
+    "occ_symbol_for_leg",
     "parse_occ_symbol",
     "parse_option_snapshot",
     "resolve_alpaca_config",
+    "submit_plan",
 ]

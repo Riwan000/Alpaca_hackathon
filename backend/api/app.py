@@ -16,6 +16,7 @@ from backend.api import (
     analyze,
     debug,
     exec_readback,
+    execute,
     health,
     readback,
     strategy_evaluate,
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(strategy_readback.router)
     app.include_router(strategy_evaluate.router)
     app.include_router(exec_readback.router)
+    app.include_router(execute.router)
     app.include_router(workflow.router)
     app.include_router(monitoring.router)
     app.include_router(pnl.router)

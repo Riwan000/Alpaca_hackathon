@@ -90,6 +90,13 @@ class ExecutionResult(Contract):
     submitted_at: datetime | None = None
     completed_at: datetime | None = None
     error: str | None = None
+    recovery_action: str | None = Field(
+        default=None,
+        description=(
+            "the legging-risk recovery step taken for a non-clean fill "
+            "(e.g. CANCEL_UNFILLED_LEGS, UNWIND_FILLED_LEGS) — P5-BE-13"
+        ),
+    )
 
     @model_validator(mode="after")
     def _status_matches_legs(self) -> ExecutionResult:
