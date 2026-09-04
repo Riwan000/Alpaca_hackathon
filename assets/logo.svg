@@ -1,0 +1,268 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgRadial" cx="0.5" cy="0.5" r="0.75">
+      <stop offset="0%" stop-color="#081F16"/>
+      <stop offset="45%" stop-color="#04120D"/>
+      <stop offset="85%" stop-color="#020805"/>
+      <stop offset="100%" stop-color="#010403"/>
+    </radialGradient>
+
+    <radialGradient id="shieldGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.32"/>
+      <stop offset="50%" stop-color="#0D9488" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="goldCoreGlow" cx="0.5" cy="0.4" r="0.38">
+      <stop offset="0%" stop-color="#FACC15" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#CA8A04" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="dollarUpperGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#FEF08A"/>
+      <stop offset="60%" stop-color="#FACC15"/>
+      <stop offset="90%" stop-color="#EAB308"/>
+      <stop offset="100%" stop-color="#CA8A04"/>
+    </linearGradient>
+
+    <linearGradient id="hexGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FACC15"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+
+    <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.18"/>
+      <stop offset="65%" stop-color="#064E3B" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#020805" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <linearGradient id="chartGrad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.6"/>
+      <stop offset="30%" stop-color="#10B981"/>
+      <stop offset="70%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#FACC15"/>
+    </linearGradient>
+
+    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <pattern id="radarGrid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#10B981" stroke-width="0.6" stroke-opacity="0.12"/>
+      <circle cx="48" cy="48" r="0.9" fill="#FACC15" fill-opacity="0.2"/>
+    </pattern>
+
+    <clipPath id="upperChartClip">
+      <polygon points="0,0 1024,0 1024,210 660,390 512,490 380,560 0,710 0,0"/>
+    </clipPath>
+  </defs>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&amp;display=swap');
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1024" height="1024" fill="url(#bgRadial)"/>
+  <rect width="1024" height="1024" fill="url(#radarGrid)"/>
+  <circle cx="512" cy="512" r="450" fill="url(#shieldGlow)"/>
+  <circle cx="512" cy="480" r="320" fill="url(#goldCoreGlow)"/>
+
+  <!-- Concentric Orbital Radar Rings -->
+  <circle cx="512" cy="512" r="380" fill="none" stroke="#10B981" stroke-width="1.2" stroke-opacity="0.15" stroke-dasharray="8,8"/>
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#FACC15" stroke-width="1.2" stroke-opacity="0.2"/>
+  <circle cx="512" cy="512" r="220" fill="none" stroke="#10B981" stroke-width="0.8" stroke-opacity="0.15"/>
+
+  <!-- Central Hex Shield Frame -->
+  <g id="shield-container">
+    <polygon points="512,180 780,335 780,645 512,800 244,645 244,335" 
+             fill="url(#shieldFill)" stroke="url(#hexGrad)" stroke-width="4.5" filter="url(#neonGlow)"/>
+
+    <polygon points="512,215 745,350 745,625 512,760 279,625 279,350" 
+             fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="6,4"/>
+
+    <!-- Corner Anchor Nodes -->
+    <circle cx="512" cy="180" r="5" fill="#FACC15" filter="url(#subtleGlow)"/>
+    <circle cx="780" cy="335" r="5" fill="#10B981" filter="url(#subtleGlow)"/>
+    <circle cx="780" cy="645" r="5" fill="#10B981" filter="url(#subtleGlow)"/>
+    <circle cx="512" cy="800" r="5" fill="#10B981" filter="url(#subtleGlow)"/>
+    <circle cx="244" cy="645" r="5" fill="#10B981" filter="url(#subtleGlow)"/>
+    <circle cx="244" cy="335" r="5" fill="#FACC15" filter="url(#subtleGlow)"/>
+  </g>
+
+  <!-- ==================== THE DOLLAR SYMBOL ==================== -->
+  
+  <!-- 1. LOWER HALF: PIXELATED VOXELS -->
+  <g id="dollar-pixelated-lower">
+    <rect x="541.0" y="466.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="556.0" y="466.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="511.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="526.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="541.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="556.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="571.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="586.0" y="481.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="481.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="496.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="511.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="526.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="541.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="556.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="571.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="586.0" y="496.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="496.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="511.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="526.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="541.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="556.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="571.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="586.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="601.0" y="511.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="496.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="511.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="556.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="571.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="586.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="601.0" y="526.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="421.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="436.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="451.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="496.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="511.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="556.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="571.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="586.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="601.0" y="541.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="406.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#FEF08A" fill-opacity="0.95"/>
+      <rect x="421.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="436.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="451.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="496.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="511.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="556.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="571.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="586.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="601.0" y="556.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="406.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="421.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="436.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#FACC15" fill-opacity="0.95"/>
+      <rect x="451.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="466.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="496.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="511.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="556.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="571.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="586.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="601.0" y="571.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="421.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="436.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="451.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="466.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="481.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="496.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="511.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="526.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="541.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="556.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="571.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="586.0" y="586.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="421.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="436.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="451.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#10B981" fill-opacity="0.95"/>
+      <rect x="466.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="481.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="496.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="511.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="526.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="541.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="556.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="571.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="586.0" y="601.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="436.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="451.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="466.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="481.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="496.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="511.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="526.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="541.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="556.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="571.0" y="616.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="466.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="481.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#0D9488" fill-opacity="0.90"/>
+      <rect x="496.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="511.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="526.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="541.0" y="631.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="496.0" y="646.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="511.0" y="646.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="496.0" y="661.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="511.0" y="661.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="496.0" y="676.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="511.0" y="676.0" width="13.0" height="13.0" rx="2" fill="#059669" fill-opacity="0.85"/>
+      <rect x="615.0" y="520.0" width="10.0" height="10.0" rx="2" fill="#FACC15" fill-opacity="0.50"/>
+      <rect x="635.0" y="550.0" width="8.0" height="8.0" rx="2" fill="#EAB308" fill-opacity="0.40"/>
+      <rect x="645.0" y="580.0" width="12.0" height="12.0" rx="2" fill="#10B981" fill-opacity="0.35"/>
+      <rect x="410.0" y="620.0" width="10.0" height="10.0" rx="2" fill="#0D9488" fill-opacity="0.40"/>
+      <rect x="390.0" y="650.0" width="8.0" height="8.0" rx="2" fill="#10B981" fill-opacity="0.30"/>
+      <rect x="530.0" y="690.0" width="10.0" height="10.0" rx="2" fill="#059669" fill-opacity="0.40"/>
+      <rect x="480.0" y="705.0" width="12.0" height="12.0" rx="2" fill="#10B981" fill-opacity="0.35"/>
+      <rect x="580.0" y="660.0" width="9.0" height="9.0" rx="2" fill="#10B981" fill-opacity="0.45"/>
+      <rect x="360.0" y="580.0" width="11.0" height="11.0" rx="2" fill="#0D9488" fill-opacity="0.35"/>
+  </g>
+
+  <!-- 2. UPPER HALF: PERFECT SMOOTH METALLIC VECTOR GLYPH -->
+  <g id="dollar-clear-upper" clip-path="url(#upperChartClip)">
+    <path d="M 503.38 606.20 L 503.38 503.10 Q 455.22 489.33 432.71 461.47 Q 410.20 433.53 410.20 393.71 Q 410.20 353.34 435.62 325.95 Q 461.12 298.49 503.38 294.32 L 503.38 270.00 L 539.03 270.00 L 539.03 294.32 Q 578.15 299.04 601.28 321.07 Q 624.42 343.03 630.79 379.94 L 568.54 388.05 Q 562.88 359.01 539.03 348.70 L 539.03 444.87 Q 598.06 460.84 619.46 486.34 Q 640.87 511.76 640.87 551.58 Q 640.87 596.12 613.95 626.66 Q 587.04 657.12 539.03 663.96 L 539.03 710.00 L 503.38 710.00 L 503.38 665.22 Q 460.89 660.03 434.29 633.51 Q 407.76 606.91 400.37 558.51 L 464.51 551.58 Q 468.44 571.26 479.22 585.58 Q 490.08 599.82 503.38 606.20 Z M 503.38 347.99 Q 488.90 352.87 480.25 364.67 Q 471.67 376.48 471.67 390.72 Q 471.67 403.79 479.54 414.96 Q 487.41 426.14 503.38 433.06 L 503.38 347.99 Z M 539.03 609.66 Q 557.53 606.20 569.02 592.58 Q 580.59 578.89 580.59 560.47 Q 580.59 543.95 570.91 532.06 Q 561.23 520.10 539.03 513.73 L 539.03 609.66 Z" fill="url(#dollarUpperGrad)" filter="url(#subtleGlow)"/>
+    <path d="M 503.38 606.20 L 503.38 503.10 Q 455.22 489.33 432.71 461.47 Q 410.20 433.53 410.20 393.71 Q 410.20 353.34 435.62 325.95 Q 461.12 298.49 503.38 294.32 L 503.38 270.00 L 539.03 270.00 L 539.03 294.32 Q 578.15 299.04 601.28 321.07 Q 624.42 343.03 630.79 379.94 L 568.54 388.05 Q 562.88 359.01 539.03 348.70 L 539.03 444.87 Q 598.06 460.84 619.46 486.34 Q 640.87 511.76 640.87 551.58 Q 640.87 596.12 613.95 626.66 Q 587.04 657.12 539.03 663.96 L 539.03 710.00 L 503.38 710.00 L 503.38 665.22 Q 460.89 660.03 434.29 633.51 Q 407.76 606.91 400.37 558.51 L 464.51 551.58 Q 468.44 571.26 479.22 585.58 Q 490.08 599.82 503.38 606.20 Z M 503.38 347.99 Q 488.90 352.87 480.25 364.67 Q 471.67 376.48 471.67 390.72 Q 471.67 403.79 479.54 414.96 Q 487.41 426.14 503.38 433.06 L 503.38 347.99 Z M 539.03 609.66 Q 557.53 606.20 569.02 592.58 Q 580.59 578.89 580.59 560.47 Q 580.59 543.95 570.91 532.06 Q 561.23 520.10 539.03 513.73 L 539.03 609.66 Z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.6"/>
+  </g>
+
+  <!-- ==================== DIAGONAL STOCK CHART LINE (CLEAN, NO CANDLESTICKS) ==================== -->
+  <g id="diagonal-stock-chart">
+    <polygon points="100,710 380,620 512,490 660,390 924,210 924,760 100,760" 
+             fill="url(#chartGrad)" fill-opacity="0.04"/>
+
+    <line x1="100" y1="710" x2="380" y2="710" stroke="#10B981" stroke-width="2" stroke-dasharray="6,4" stroke-opacity="0.6"/>
+    <circle cx="380" cy="710" r="4.5" fill="#10B981" filter="url(#subtleGlow)"/>
+    <text x="120" y="698" fill="#10B981" class="font-mono" font-size="12" font-weight="700" letter-spacing="1">HEDGE FLOOR</text>
+
+    <!-- Main Diagonal Stock Trajectory Line -->
+    <path d="M 100 710 
+             C 240 700, 360 630, 470 530 
+             C 512 490, 560 450, 640 400 
+             C 730 340, 810 280, 924 210" 
+          fill="none" stroke="url(#chartGrad)" stroke-width="6.5" stroke-linecap="round" filter="url(#neonGlow)"/>
+
+    <path d="M 100 710 
+             C 240 700, 360 630, 470 530 
+             C 512 490, 560 450, 640 400 
+             C 730 340, 810 280, 924 210" 
+          fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+
+    <!-- Trajectory Nodes -->
+    <circle cx="100" cy="710" r="6" fill="#EF4444" filter="url(#subtleGlow)"/>
+    <circle cx="470" cy="530" r="7" fill="#10B981" filter="url(#subtleGlow)"/>
+    <circle cx="470" cy="530" r="13" fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.6"/>
+
+    <circle cx="512" cy="490" r="8" fill="#FACC15" filter="url(#neonGlow)"/>
+    <circle cx="512" cy="490" r="16" fill="none" stroke="#FACC15" stroke-width="1.8" stroke-opacity="0.8"/>
+
+    <circle cx="924" cy="210" r="9" fill="#FACC15" filter="url(#neonGlow)"/>
+    <circle cx="924" cy="210" r="18" fill="none" stroke="#FACC15" stroke-width="2" stroke-opacity="0.8" stroke-dasharray="4,4"/>
+  </g>
+
+  <!-- Logo Typography -->
+  <g transform="translate(512, 895)">
+    <text x="0" y="0" fill="url(#dollarUpperGrad)" class="font-mono" font-size="28" font-weight="800" letter-spacing="8" text-anchor="middle">AEGIS</text>
+    <text x="0" y="26" fill="#10B981" class="font-mono" font-size="12" font-weight="700" letter-spacing="3" text-anchor="middle">AUTONOMOUS PORTFOLIO DEFENSE</text>
+  </g>
+</svg>
