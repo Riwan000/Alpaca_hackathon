@@ -174,7 +174,9 @@ def test_vs_benchmark(tmp_path: Path) -> None:
     assert data["drawdown_reduction"] == 6000.0
     assert data["is_cushioned"] is True
     assert data["hedge_cushion"] == 4000.0
-    assert data["hedge_cost"] == 1600.0
+    # hedge_cost is the latest row's *standing* cost of the active hedge
+    # (mirrors GET /pnl/current), not a sum across rows that repeat it.
+    assert data["hedge_cost"] == 800.0
 
 
 def test_vs_benchmark_empty_db(tmp_path: Path) -> None:
@@ -196,4 +198,61 @@ def test_vs_benchmark_empty_db(tmp_path: Path) -> None:
     assert data["points"] == []
     assert data["hedged_max_drawdown"] == 0.0
     assert data["unhedged_max_drawdown"] == 0.0
+    assert data["hedge_cost"] == 0.0
+    # No hedge ever ran: no drawdown was reduced, so this is not a cushioned result.
+    assert data["is_cushioned"] is False
+
+
+def test_vs_benchmark_first_row_already_mid_drawdown(tmp_path: Path) -> None:
+    """A series (like the demo replay) whose first row is already the trough —
+    no earlier "healthy" row was recorded — still measures the drop from the
+    implicit zero P&L baseline, not a flat zero drawdown."""
+    db_url = f"sqlite:///{tmp_path / 'benchmark_middrop_scratch.db'}"
+    up = _run_alembic("upgrade", "head", db_url=db_url)
+    assert up.returncode == 0, f"`alembic upgrade head` failed:\n{up.stdout}\n{up.stderr}"
+
+    engine = create_engine(normalize_driver(db_url), future=True)
+    repo = PerformanceRepository(engine)
+
+    # Mirrors backend/demo_replay.py's two-row shape: the first recorded point is
+    # already down from a drop, and the standing hedge_cost repeats unchanged
+    # while the same protective put stays on.
+    repo.save(
+        PerformanceRecord(
+            cycle_id="cycle_a",
+            portfolio_pnl=_D("-30000.0000"),
+            hedge_pnl=_D("22000.0000"),
+            net_pnl=_D("-8000.0000"),
+            drawdown=_D("-0.0080"),
+            hedge_cost=_D("1700.0000"),
+            benchmark_pnl=_D("-30000.0000"),
+        )
+    )
+    repo.save(
+        PerformanceRecord(
+            cycle_id="cycle_b",
+            portfolio_pnl=_D("-10000.0000"),
+            hedge_pnl=_D("16000.0000"),
+            net_pnl=_D("6000.0000"),
+            drawdown=_D("0.0000"),
+            hedge_cost=_D("1700.0000"),
+            benchmark_pnl=_D("-10000.0000"),
+        )
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_readback_engine] = lambda: engine
+    try:
+        with TestClient(app) as test_client:
+            data = test_client.get("/pnl/vs-benchmark").json()
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+    # Measured from the implicit zero baseline, not the first row's own value.
+    assert data["hedged_max_drawdown"] == 8000.0
+    assert data["unhedged_max_drawdown"] == 30000.0
     assert data["is_cushioned"] is True
+    assert data["drawdown_reduction"] == 22000.0
+    # The standing hedge cost, not 1700 * 2 rows.
+    assert data["hedge_cost"] == 1700.0

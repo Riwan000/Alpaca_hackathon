@@ -130,31 +130,38 @@ class PerformanceRepository:
         Walks the ordered performance series building two cumulative-P&L curves —
         ``hedged`` (``net_pnl``) and ``unhedged`` (``benchmark_pnl``) — and the
         running drawdown of each: the drop from that curve's own prior peak, as a
-        non-negative dollar magnitude. Before any hedge is on, ``net_pnl`` equals
-        ``benchmark_pnl`` at every point, so the two curves — and their
-        drawdowns — coincide. Once a protective put pays off inside a drawdown the
-        hedged curve troughs shallower, so ``hedged_max_drawdown`` falls below
-        ``unhedged_max_drawdown`` and ``is_cushioned`` is ``True`` (BRD §36).
+        non-negative dollar magnitude. Both peaks are seeded at ``0`` — cumulative
+        P&L is zero before the first cycle runs — so a series whose very first row
+        is already mid-drop (e.g. the demo replay) still measures the drop from
+        that implicit baseline instead of reporting a flat zero drawdown.
+
+        Before any hedge is on, ``net_pnl`` equals ``benchmark_pnl`` at every
+        point, so the two curves — and their drawdowns — coincide. Once a
+        protective put pays off inside a drawdown the hedged curve troughs
+        shallower, so ``hedged_max_drawdown`` falls below ``unhedged_max_drawdown``
+        and ``is_cushioned`` (a *strict* improvement) is ``True`` (BRD §36).
+
+        ``hedge_cost`` reports the latest row's standing cost of the active hedge
+        (mirroring ``GET /pnl/current``), not a sum — the column tracks the
+        current position's cost basis, so consecutive rows repeat it while the
+        hedge stays on, and summing would multiply it by the row count.
         """
         series = self.get_series(limit=limit)
 
         points: list[dict[str, Any]] = []
-        hedged_peak: decimal.Decimal | None = None
-        unhedged_peak: decimal.Decimal | None = None
-        hedged_max_dd = decimal.Decimal("0")
-        unhedged_max_dd = decimal.Decimal("0")
-        total_hedge_cost = decimal.Decimal("0")
+        zero = decimal.Decimal("0")
+        hedged_peak = zero
+        unhedged_peak = zero
+        hedged_max_dd = zero
+        unhedged_max_dd = zero
 
         for r in series:
-            hedged_peak = r.net_pnl if hedged_peak is None else max(hedged_peak, r.net_pnl)
-            unhedged_peak = (
-                r.benchmark_pnl if unhedged_peak is None else max(unhedged_peak, r.benchmark_pnl)
-            )
+            hedged_peak = max(hedged_peak, r.net_pnl)
+            unhedged_peak = max(unhedged_peak, r.benchmark_pnl)
             hedged_dd = hedged_peak - r.net_pnl
             unhedged_dd = unhedged_peak - r.benchmark_pnl
             hedged_max_dd = max(hedged_max_dd, hedged_dd)
             unhedged_max_dd = max(unhedged_max_dd, unhedged_dd)
-            total_hedge_cost += r.hedge_cost
 
             points.append(
                 {
@@ -169,14 +176,15 @@ class PerformanceRepository:
             )
 
         last = series[-1] if series else None
+        drawdown_reduction = unhedged_max_dd - hedged_max_dd
         return {
             "points": points,
             "hedged_max_drawdown": float(hedged_max_dd),
             "unhedged_max_drawdown": float(unhedged_max_dd),
-            "drawdown_reduction": float(unhedged_max_dd - hedged_max_dd),
+            "drawdown_reduction": float(drawdown_reduction),
             "hedge_cushion": float(last.net_pnl - last.benchmark_pnl) if last else 0.0,
-            "hedge_cost": float(total_hedge_cost),
-            "is_cushioned": hedged_max_dd <= unhedged_max_dd,
+            "hedge_cost": float(last.hedge_cost) if last else 0.0,
+            "is_cushioned": drawdown_reduction > 0,
         }
 
     def explain_dashboard_query(self) -> str:
