@@ -40,7 +40,13 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class MonitoringThresholds:
-    """Quantitative thresholds for Level-1 deterministic monitoring checks."""
+    """Quantitative thresholds for Level-1 deterministic monitoring checks.
+
+    The first block is used by the absolute Level-1 checks in
+    :class:`MonitoringAgent`. The ``*_change`` / ``emergency_*`` / ``deadband`` /
+    ``cooldown_seconds`` block drives the trigger evaluator pipeline in
+    :mod:`backend.agents.monitoring.triggers` (Tasks P7-BE-2..4).
+    """
 
     drawdown_pct: float = 0.05
     hedge_drift_pct: float = 0.05
@@ -51,6 +57,19 @@ class MonitoringThresholds:
     beta_min: float = 0.0
     beta_max: float = 2.0
     news_sentiment_min: float = -0.60
+
+    # --- Trigger evaluators: change deltas vs the previous snapshot --------- #
+    drawdown_change: float = 0.03
+    volatility_change: float = 0.10
+
+    # --- Emergency escalation levels (bypass the cooldown window) ---------- #
+    emergency_drawdown: float = 0.15
+    emergency_volatility: float = 0.60
+    emergency_vix: float = 45.0
+
+    # --- Deadband + cooldown --------------------------------------------- #
+    deadband: float = 0.02
+    cooldown_seconds: int = 300
 
 
 class MonitoringAgent:

@@ -704,15 +704,15 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-BE-1** — Monitoring Agent — Level 1 deterministic checks: drawdown, hedge drift, volatility, exposure, expiration, major state change. Does not trade.
   - Test: `tests/agents/test_monitor_level1.py` — each check fires only past its threshold; the agent has no execution path (asserted — no order calls).
   - [x] Confirm — `backend/agents/monitoring/agent.py::MonitoringAgent` implements Level-1 deterministic checks (`check_drawdown`, `check_hedge_drift`, `check_volatility`, `check_exposure`, `check_expiration`, `check_major_state_change`) across quantitative thresholds, snapshots `MonitoringState`, and persists events to `monitoring_events` / `monitoring_state` via `MonitoringRepository`. Invariant verified: no execution attributes/methods exist and feeding a drifted portfolio produces a `PORTFOLIO_DELTA` trigger observation with zero orders placed. 12/12 tests passing in `tests/agents/test_monitor_level1.py`.
-- [ ] **P7-BE-2** — Trigger evaluators: hedge drift, drawdown change, volatility change, event, expiration, emergency.
+- [x] **P7-BE-2** — Trigger evaluators: hedge drift, drawdown change, volatility change, event, expiration, emergency.
   - Test: `tests/agents/test_triggers.py` — one focused case per trigger type → correct type + payload.
-  - [ ] Confirm — synthesize each condition; the matching trigger type is emitted.
-- [ ] **P7-BE-3** — Deadband filter — ignore sub-threshold deviations.
+  - [x] Confirm — `backend/agents/monitoring/triggers.py` exposes six evaluators (`evaluate_hedge_drift` → `PORTFOLIO_DELTA`, `evaluate_drawdown_change` / `evaluate_volatility_change` diffing the prior `MonitoringState`, `evaluate_event` → `CORRELATION_BREAKDOWN`, `evaluate_expiration` → `TIME_ELAPSED`, `evaluate_emergency` → deep-drawdown / vol-blowout with `is_emergency=True`) plus `evaluate_triggers` aggregating them (emergency first). `tests/agents/test_triggers.py` synthesizes each condition and asserts the emitted `TriggerType` + payload.
+- [x] **P7-BE-3** — Deadband filter — ignore sub-threshold deviations.
   - Test: `tests/agents/test_deadband.py` — a deviation inside the band produces no event; just outside produces one.
-  - [ ] Confirm — nudge hedge ratio by < deadband; nothing fires.
-- [ ] **P7-BE-4** — Cooldown after an adjustment, with emergency-trigger bypass.
+  - [x] Confirm — `apply_deadband` drops deviation triggers (`PORTFOLIO_DELTA` / `DRAWDOWN_LIMIT` / `VOLATILITY_SPIKE`) whose excess over threshold is `<= deadband` (default 0.02); emergencies, `TIME_ELAPSED` countdowns and categorical events pass through. A hedge-ratio nudge below the deadband yields nothing through `TriggerEngine.evaluate`.
+- [x] **P7-BE-4** — Cooldown after an adjustment, with emergency-trigger bypass.
   - Test: `tests/agents/test_cooldown.py` — a normal trigger during cooldown is suppressed; an emergency trigger bypasses it.
-  - [ ] Confirm — adjust, then immediately trip a normal trigger (suppressed) and an emergency trigger (passes).
+  - [x] Confirm — `start_cooldown` stamps `cooldown_until` (default 300s); `apply_cooldown` returns everything once the window is `None`/elapsed and only `is_emergency` triggers while it is active. `TriggerEngine.evaluate` end-to-end: a hedge-drift trigger right after an adjustment is suppressed, a deep-drawdown emergency in the same window passes, and the normal trigger fires again after the window elapses.
 - [ ] **P7-BE-5** — Level 2 intelligent reassessment — routes back into the orchestrator with context.
   - Test: `tests/agents/test_level2_route.py` — a fired trigger re-enters the graph at `STRATEGY_EVALUATION` with the trigger + current hedge in context.
   - [ ] Confirm — a trigger starts a new reassessment cycle carrying the trigger reason.
