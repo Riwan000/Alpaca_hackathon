@@ -713,24 +713,24 @@ replaces, or removes protection rather than just accumulating puts.
 - [x] **P7-BE-4** — Cooldown after an adjustment, with emergency-trigger bypass.
   - Test: `tests/agents/test_cooldown.py` — a normal trigger during cooldown is suppressed; an emergency trigger bypasses it.
   - [x] Confirm — `start_cooldown` stamps `cooldown_until` (default 300s); `apply_cooldown` returns everything once the window is `None`/elapsed and only `is_emergency` triggers while it is active. `TriggerEngine.evaluate` end-to-end: a hedge-drift trigger right after an adjustment is suppressed, a deep-drawdown emergency in the same window passes, and the normal trigger fires again after the window elapses.
-- [ ] **P7-BE-5** — Level 2 intelligent reassessment — routes back into the orchestrator with context.
+- [x] **P7-BE-5** — Level 2 intelligent reassessment — routes back into the orchestrator with context.
   - Test: `tests/agents/test_level2_route.py` — a fired trigger re-enters the graph at `STRATEGY_EVALUATION` with the trigger + current hedge in context.
-  - [ ] Confirm — a trigger starts a new reassessment cycle carrying the trigger reason.
-- [ ] **P7-BE-6** — Reassessment outcomes: `MAINTAIN` / `INCREASE` / `DECREASE` / `REMOVE` / `REPLACE` / `NO_TRADE`.
+  - [x] Confirm — `backend/agents/monitoring/escalation.py::build_reassessment_entry_state` packages the fired trigger (`ReassessmentRequest` — trigger types, reason, current hedge) onto the seed `OrchestratorState`; `build_reassessment_graph` compiles `STRATEGY_EVALUATION → RISK_CHECK → EXECUTION → MONITORING` from the real P6 node bodies (same `NO_TRADE`/`REJECT` short-circuits) and `run_reassessment_cycle` runs it. `reassessment_origin=True` on the seed state stops the terminal `MONITORING` node from escalating a second time. `tests/agents/test_level2_route.py` (4 cases) confirms `visited[0] == "STRATEGY_EVALUATION"` (never `INITIAL`/`ANALYZING`), the reason/current-hedge ride along, and the run lands terminal without relooping.
+- [x] **P7-BE-6** — Reassessment outcomes: `MAINTAIN` / `INCREASE` / `DECREASE` / `REMOVE` / `REPLACE` / `NO_TRADE`.
   - Test: `tests/agents/test_reassessment_outcomes.py` (stubbed LLM) — each context shape yields the expected outcome enum; outcome is schema-bound.
-  - [ ] Confirm — a stabilization context yields `DECREASE` or `REMOVE`.
-- [ ] **P7-BE-7** — Apply-change path — `DECREASE` / `REMOVE` / `REPLACE` produce a new `ExecutionPlan` through the risk gate.
+  - [x] Confirm — `backend/models/reassessment.py::ReassessmentDecision` binds `outcome` to the six-value `REASSESSMENT_OUTCOMES` set (`HedgeAction` minus `NEW_HEDGE`, rejected by a validator). `backend/agents/monitoring/reassessment.py::ReassessmentAgent.assess` parses a schema-bound LLM verdict and falls back to a deterministic heuristic (correlation breakdown → `REPLACE`; deepening drawdown/vol → `INCREASE`; expiration-only → `REPLACE`; stabilizing → `DECREASE`/`REMOVE`; no hedge on book → `NO_TRADE`; else `MAINTAIN`) on any LLM failure or off-schema label. `tests/agents/test_reassessment_outcomes.py` (14 cases): a stabilization context yields `DECREASE` or `REMOVE`.
+- [x] **P7-BE-7** — Apply-change path — `DECREASE` / `REMOVE` / `REPLACE` produce a new `ExecutionPlan` through the risk gate.
   - Test: `tests/agents/test_apply_change.py` — `DECREASE` → a sell/close plan that still passes the risk gate; `REMOVE` → full close; `REPLACE` → close + open.
-  - [ ] Confirm — a `DECREASE` outcome results in a real paper order that reduces the hedge.
-- [ ] **P7-BE-8** — `MONITORING` node runs Level 1 each cycle and escalates to Level 2 on a trigger.
+  - [x] Confirm — `backend/agents/monitoring/apply_change.py::apply_change` inverts the current hedge legs into a closing `StrategyHypothesis` (sized by outcome — partial for `DECREASE`, full for `REMOVE`/`REPLACE`), runs it through `RiskAgent.review` with the curated `REDUCE_CHECKS` (a close is a credit trade whose legs are already-held positions, not analyzed candidates — the open-a-hedge screens don't apply; the cash-math + price-band checks still do and can still `REJECT`), then `build_execution_plan`. With a broker it submits and writes `orders`/`fills` + a signed `hedge_changes` row; `REPLACE` also flags `reopen_recommended`. `tests/agents/test_apply_change.py` (10 cases, incl. the real deterministic gate, not just a stub): a `DECREASE` submits a real paper order (`_FillingBroker`) and writes a `hedge_changes` row with `delta < 0` and `after_hedge_ratio < before_hedge_ratio`.
+- [x] **P7-BE-8** — `MONITORING` node runs Level 1 each cycle and escalates to Level 2 on a trigger.
   - Test: `tests/agents/test_node_monitoring.py` — no trigger → cycle ends; trigger → Level 2 dispatched once (not looping).
-  - [ ] Confirm — run two cycles: quiet one ends clean, triggered one escalates.
-- [ ] **P7-BE-9** — `POST /monitor` (manual tick) + a scheduled tick for the demo.
+  - [x] Confirm — `nodes.py::monitoring_node` merges the absolute Level-1 checks (`MonitoringAgent`) with the relative-change/emergency evaluators (`triggers.py`), applies the deadband, and gates escalation through `should_escalate` (cooldown-aware, emergency-bypass). A cleared gate dispatches `ReassessmentAgent` once and, for a position-changing outcome, `apply_change` — guarded by `reassessment_origin` so a reassessment sub-cycle's own `MONITORING` never escalates again. `tests/agents/test_node_monitoring.py` (5 cases, incl. a call-count spy): a quiet cycle ends clean with no `reassessment_decision`; a triggered cycle dispatches Level 2 exactly once and persists a `reassessment_events` row; two cycles back-to-back (quiet then triggered) behave independently.
+- [x] **P7-BE-9** — `POST /monitor` (manual tick) + a scheduled tick for the demo.
   - Test: `tests/api/test_monitor.py` — manual tick returns fired triggers (or none); scheduler registers the job.
-  - [ ] Confirm — `curl -XPOST /monitor`; response lists current triggers.
-- [ ] **P7-BE-10** — Test — stabilization scenario reduces the hedge; an emergency bypasses cooldown. *(test task for P7-BE-4/6/7)*
+  - [x] Confirm — `backend/api/monitor.py::monitor_tick` runs `MonitoringAgent(repo=...).evaluate` against an injectable hedge-context provider and reports `triggers` / `active_triggers` / the `should_escalate` verdict, persisting `monitoring_events`/`monitoring_state` so `GET /monitoring/events` reflects the tick; a missing context (no creds) still answers 200 rather than 500. `MonitorScheduler` (re-arming `threading.Timer` jobs) + `install_demo_monitor_tick` register the demo's periodic job under `DEMO_TICK_JOB_ID`. `tests/api/test_monitor.py` (6 cases): `curl -XPOST /monitor` lists the current triggers (or an all-clear), and the scheduler test confirms registration + an actual timer fire.
+- [x] **P7-BE-10** — Test — stabilization scenario reduces the hedge; an emergency bypasses cooldown. *(test task for P7-BE-4/6/7)*
   - Test: `tests/e2e/test_adaptation.py` — scripted "vol spike → hedge on → vol falls → hedge reduced"; separately, an emergency trigger fires inside cooldown.
-  - [ ] Confirm — the end-to-end stabilization script reduces the hedge without human input.
+  - [x] Confirm — `tests/e2e/test_adaptation.py` (5 cases) drives `monitoring_node` directly (no LLM — the deterministic heuristic + engine) against a scripted DB: a vol-spike context recommends `INCREASE`; a stabilized context reduces the hedge hands-off — a real (fake) paper order fills, a `hedge_changes` row lands with a negative signed delta, and a `reassessment_events` row links the trigger to the outcome; separately, a normal trigger inside a persisted cooldown window is suppressed while a genuine `is_emergency` breach (`evaluate_emergency`'s ≥15% drawdown) bypasses the same window, both through `should_escalate` directly and end-to-end through the node.
 
 ### Frontend
 - [x] **P7-FE-1** — Monitoring / triggers panel — active triggers + history.
@@ -747,10 +747,10 @@ replaces, or removes protection rather than just accumulating puts.
   - [x] Confirm — `src/routes/AdaptationStory.tsx` provides interactive narrative timeline for BRD §37 Scene 8; vitest suite passes.
 
 **Phase 7 acceptance**
-- [ ] Level 1 never trades; only Level 2 (via the risk gate) does.
-- [ ] Deadband suppresses noise; cooldown holds except for emergencies.
-- [ ] Scripted stabilization run reduces/removes the hedge hands-off (`tests/e2e/test_adaptation.py`).
-- [ ] Monitoring panel + drift gauge + reassessment history render against real endpoints.
+- [x] Level 1 never trades; only Level 2 (via the risk gate) does.
+- [x] Deadband suppresses noise; cooldown holds except for emergencies.
+- [x] Scripted stabilization run reduces/removes the hedge hands-off (`tests/e2e/test_adaptation.py`).
+- [x] Monitoring panel + drift gauge + reassessment history render against real endpoints.
 
 ---
 

@@ -1420,6 +1420,100 @@
         "title": "MarketState",
         "type": "object"
       },
+      "MonitorTickIn": {
+        "properties": {
+          "cycle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          }
+        },
+        "title": "MonitorTickIn",
+        "type": "object"
+      },
+      "MonitorTickOut": {
+        "properties": {
+          "active_triggers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Active Triggers",
+            "type": "array"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "bypassed_cooldown": {
+            "default": false,
+            "title": "Bypassed Cooldown",
+            "type": "boolean"
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "emergency": {
+            "default": false,
+            "title": "Emergency",
+            "type": "boolean"
+          },
+          "escalate": {
+            "default": false,
+            "title": "Escalate",
+            "type": "boolean"
+          },
+          "escalation_reason": {
+            "default": "",
+            "title": "Escalation Reason",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "persisted": {
+            "default": false,
+            "title": "Persisted",
+            "type": "boolean"
+          },
+          "triggers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TriggerOut"
+            },
+            "title": "Triggers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of"
+        ],
+        "title": "MonitorTickOut",
+        "type": "object"
+      },
       "MonitoringEventNode": {
         "properties": {
           "cycle_id": {
@@ -3585,6 +3679,57 @@
         "title": "TriggerObservation",
         "type": "object"
       },
+      "TriggerOut": {
+        "properties": {
+          "breached": {
+            "default": true,
+            "title": "Breached",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "observed_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Value"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "trigger_type": {
+            "title": "Trigger Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger_type"
+        ],
+        "title": "TriggerOut",
+        "type": "object"
+      },
       "TriggerType": {
         "description": "Monitoring trigger taxonomy — mirrors ``trigger_type_enum`` (migration 0010).",
         "enum": [
@@ -4066,6 +4211,48 @@
         "summary": "Health",
         "tags": [
           "ops"
+        ]
+      }
+    },
+    "/monitor": {
+      "post": {
+        "description": "Run Level-1 checks once and report the fired triggers (task P7-BE-9).",
+        "operationId": "monitor_tick_monitor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorTickIn",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorTickOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Monitor Tick",
+        "tags": [
+          "monitoring"
         ]
       }
     },

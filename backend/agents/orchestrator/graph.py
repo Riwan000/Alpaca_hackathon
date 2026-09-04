@@ -40,6 +40,7 @@ from backend.models.enums import WorkflowNode
 from backend.models.execution import ExecutionResult
 from backend.models.hedge_context import HedgeContext
 from backend.models.monitoring import MonitoringState
+from backend.models.reassessment import ReassessmentDecision, ReassessmentRequest
 from backend.models.risk import RiskDecision
 from backend.models.strategy import StrategyDecision
 
@@ -110,6 +111,16 @@ class OrchestratorState(TypedDict, total=False):
     risk_decision: RiskDecision
     execution_result: ExecutionResult
     monitoring_state: MonitoringState
+    # Phase 7 — Level-2 reassessment (P7-BE-5 / P7-BE-8). ``reassessment`` is the
+    # trigger payload a fired Level-1 check carries into a reassessment cycle;
+    # ``reassessment_origin`` marks a state that is *already* a Level-2 cycle so
+    # ``MONITORING`` snapshots without escalating again (no loop);
+    # ``reassessment_decision`` / ``reassessment_result`` are what the escalation
+    # writes back.
+    reassessment: ReassessmentRequest
+    reassessment_origin: bool
+    reassessment_decision: ReassessmentDecision
+    reassessment_result: "dict[str, Any]"
 
 
 def _placeholder(node: WorkflowNode) -> Any:

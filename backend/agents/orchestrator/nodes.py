@@ -67,7 +67,7 @@ import logging
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -105,15 +105,23 @@ from backend.agents.orchestrator.resilience import (
 )
 from backend.integrations.alpaca.client import AlpacaError
 from backend.integrations.alpaca.orders import OrderSubmitter, SubmitOutcome, submit_plan
+from backend.agents.monitoring.apply_change import apply_change
+from backend.agents.monitoring.reassessment import (
+    ReassessmentAgent,
+    build_reassessment_request,
+    should_escalate,
+)
 from backend.models.enums import (
     DecisionType,
     ExecutionStatus,
     RiskVerdict,
+    TriggerType,
     WorkflowNode,
 )
 from backend.models.execution import ExecutionResult
 from backend.models.hedge_context import HedgeContext
 from backend.models.monitoring import MonitoringState
+from backend.models.reassessment import ReassessmentDecision
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -132,6 +140,7 @@ __all__ = [
     "route_after_analyzing",
     "route_after_strategy",
     "route_after_risk",
+    "route_after_monitoring",
 ]
 
 logger = logging.getLogger(__name__)
@@ -736,12 +745,23 @@ def _combine_legged(outcome: SubmitOutcome) -> dict[str, Any]:
 
 
 def monitoring_node(deps: OrchestratorDeps) -> NodeBody:
-    """Terminal node: snapshot a :class:`MonitoringState` and hand off to Phase 7.
+    """Terminal node: run Level-1 checks each cycle, escalate once on a trigger.
 
-    A placeholder — it records the portfolio / hedge snapshot for the cycle and
-    persists one ``monitoring_state`` row (when an engine is configured) so the
-    cycle ends discoverable. It makes no trades and adds no routing; Phase 7
-    replaces the body with the real Level-1 / Level-2 monitoring loop.
+    Task **P7-BE-8**. Every cycle it snapshots a :class:`MonitoringState` from the
+    Level-1 deterministic checks (:class:`backend.agents.monitoring.agent.MonitoringAgent`
+    — landed with P7-BE-1; until then the trigger set is empty and the node
+    behaves as the P6 placeholder) and persists one ``monitoring_state`` row.
+
+    When a trigger has fired and :func:`~backend.agents.monitoring.reassessment.should_escalate`
+    clears it (not inside the post-adjustment cooldown, or an emergency that
+    bypasses it), a Level-2 reassessment is dispatched **once**: the
+    :class:`~backend.agents.monitoring.reassessment.ReassessmentAgent` picks an
+    outcome and a position-changing one (``DECREASE`` / ``REMOVE`` / ``REPLACE``)
+    is taken through the risk gate by
+    :func:`~backend.agents.monitoring.apply_change.apply_change`. A state that is
+    *already* a reassessment cycle (``reassessment_origin``) snapshots without
+    escalating again, so the loop closes in one hop rather than recursing.
+    The node stays terminal — it adds no ``route``.
     """
     if deps.engine is None:
         logger.warning("MONITORING node built with engine=None; monitoring_state will not persist")
@@ -749,30 +769,291 @@ def monitoring_node(deps: OrchestratorDeps) -> NodeBody:
     def _run(state: OrchestratorState) -> dict[str, Any]:
         ctx = _context(state)
         exec_result = state.get("execution_result")
-        cycle_id = state.get("cycle_id") or (ctx.cycle_id if ctx is not None else "unknown")
-
-        state_snapshot = MonitoringState(
-            cycle_id=cycle_id,
-            as_of=datetime.now(timezone.utc),
-            portfolio_value=ctx.portfolio_state.total_value if ctx is not None else None,
-            drawdown=ctx.portfolio_state.drawdown if ctx is not None else None,
-            volatility=ctx.portfolio_state.volatility if ctx is not None else None,
-            gross_exposure=ctx.portfolio_state.gross_exposure if ctx is not None else None,
-            hedge_ratio=ctx.current_hedge.hedge_ratio if ctx is not None else None,
-            target_hedge_ratio=ctx.objective.target_hedge_ratio if ctx is not None else None,
-            trigger_history=[],
-            active_triggers=[],
-            reassessment_recommended=False,
+        cycle_id = str(
+            state.get("cycle_id") or (ctx.cycle_id if ctx is not None else "unknown")
         )
-        _persist_monitoring(deps.engine, state_snapshot, exec_result)
-        return _stamp(WorkflowNode.MONITORING, monitoring_state=state_snapshot)
+        is_reassessment = bool(state.get("reassessment_origin"))
+
+        level1 = _run_level1_checks(deps, ctx, cycle_id)
+        payload: dict[str, Any] = {"monitoring_state": level1}
+        notes: list[str] = []
+        reassess_summary: dict[str, Any] | None = None
+
+        if not is_reassessment and ctx is not None:
+            esc = should_escalate(level1)
+            if esc.escalate:
+                dispatched = _dispatch_level2(deps, ctx, level1, esc, cycle_id)
+                if dispatched is not None:
+                    payload["reassessment_decision"] = dispatched["decision"]
+                    payload["reassessment_result"] = dispatched["summary"]
+                    reassess_summary = dispatched["summary"]
+                    notes.append(dispatched["note"])
+            elif level1.active_triggers:
+                notes.append(f"MONITORING: {esc.reason}")
+
+        _persist_monitoring(deps.engine, level1, exec_result, reassess_summary)
+        if notes:
+            payload["notes"] = notes
+        return _stamp(WorkflowNode.MONITORING, **payload)
 
     _run.__name__ = "monitoring_node"
     return _run
 
 
+def _bare_monitoring_snapshot(
+    ctx: HedgeContext | None, cycle_id: str, cooldown_until: "datetime | None"
+) -> MonitoringState:
+    """The P6 placeholder snapshot — no triggers — used until P7-BE-1 lands or if
+    a Level-1 evaluation raises."""
+    return MonitoringState(
+        cycle_id=cycle_id,
+        as_of=datetime.now(timezone.utc),
+        portfolio_value=ctx.portfolio_state.total_value if ctx is not None else None,
+        drawdown=ctx.portfolio_state.drawdown if ctx is not None else None,
+        volatility=ctx.portfolio_state.volatility if ctx is not None else None,
+        gross_exposure=ctx.portfolio_state.gross_exposure if ctx is not None else None,
+        hedge_ratio=ctx.current_hedge.hedge_ratio if ctx is not None else None,
+        target_hedge_ratio=ctx.objective.target_hedge_ratio if ctx is not None else None,
+        trigger_history=[],
+        active_triggers=[],
+        cooldown_until=cooldown_until,
+        reassessment_recommended=False,
+    )
+
+
+#: Deviation trigger types both ``agent.py`` (absolute) and ``triggers.py``
+#: (relative-change) can independently emit — kept once, from whichever fires,
+#: so a single condition never double-counts as two observations.
+_DEDUPE_TRIGGER_TYPES: frozenset[TriggerType] = frozenset(
+    {TriggerType.PORTFOLIO_DELTA, TriggerType.TIME_ELAPSED}
+)
+
+
+def _run_level1_checks(
+    deps: OrchestratorDeps, ctx: HedgeContext | None, cycle_id: str
+) -> MonitoringState:
+    """Deadband-filtered Level-1 triggers, degrading to the bare placeholder
+    snapshot when the pipeline is unavailable or raises.
+
+    Combines the two complementary Level-1 signal sets: the absolute-threshold
+    checks (:class:`~backend.agents.monitoring.agent.MonitoringAgent` — "is a
+    hard limit broken right now", task P7-BE-1) and the relative-change /
+    emergency evaluators (:mod:`backend.agents.monitoring.triggers` — "did
+    something change enough to reassess, and is it a bypass-cooldown emergency",
+    tasks P7-BE-2..4). Overlapping deviation types
+    (:data:`_DEDUPE_TRIGGER_TYPES` — hedge drift, expiration) are kept once.
+
+    Cooldown is deliberately **not** applied here — :func:`should_escalate`
+    (P7-BE-8) applies it against ``cooldown_until``, so a suppressed cycle still
+    carries the trigger(s) that fired and can say *why* it did not escalate.
+    """
+    prev = _latest_monitoring_state(deps.engine)
+    cooldown_until = prev.cooldown_until if prev is not None else None
+    if ctx is None:
+        return _bare_monitoring_snapshot(None, cycle_id, cooldown_until)
+    try:
+        from backend.agents.monitoring.agent import MonitoringAgent, MonitoringThresholds
+        from backend.agents.monitoring.triggers import (
+            apply_deadband,
+            evaluate_drawdown_change,
+            evaluate_emergency,
+            evaluate_volatility_change,
+        )
+
+        thresholds = MonitoringThresholds()
+        absolute = MonitoringAgent(thresholds=thresholds).evaluate_all_triggers(ctx)
+        seen = {o.trigger_type for o in absolute if o.trigger_type in _DEDUPE_TRIGGER_TYPES}
+        extra = [
+            obs
+            for obs in (
+                evaluate_emergency(ctx, thresholds),
+                evaluate_drawdown_change(ctx, prev, thresholds),
+                evaluate_volatility_change(ctx, prev, thresholds),
+            )
+            if obs is not None and obs.trigger_type not in seen
+        ]
+        observations = apply_deadband(absolute + extra, thresholds.deadband)
+        return _snapshot_from_observations(ctx, cycle_id, observations, cooldown_until)
+    except Exception:  # noqa: BLE001 - P7-BE-1..4 not landed yet, or a check raised
+        logger.debug(
+            "MONITORING: Level-1/trigger pipeline unavailable; using a bare snapshot",
+            exc_info=True,
+        )
+        return _bare_monitoring_snapshot(ctx, cycle_id, cooldown_until)
+
+
+def _snapshot_from_observations(
+    ctx: HedgeContext,
+    cycle_id: str,
+    observations: list[Any],
+    cooldown_until: "datetime | None",
+) -> MonitoringState:
+    """Assemble the :class:`MonitoringState` snapshot from the fired observations."""
+    now_utc = datetime.now(timezone.utc)
+    days_to_exp: float | None = None
+    if ctx.current_hedge.expiration:
+        ctx_date = ctx.timestamp.date() if isinstance(ctx.timestamp, datetime) else date.today()
+        days_to_exp = float((ctx.current_hedge.expiration - ctx_date).days)
+    target_hedge = (
+        ctx.current_hedge.target_hedge_ratio
+        if ctx.current_hedge.target_hedge_ratio is not None
+        else ctx.objective.target_hedge_ratio
+    )
+    return MonitoringState(
+        cycle_id=cycle_id,
+        as_of=now_utc,
+        portfolio_value=ctx.portfolio_state.total_value,
+        drawdown=ctx.portfolio_state.drawdown,
+        volatility=ctx.portfolio_state.volatility,
+        gross_exposure=ctx.portfolio_state.gross_exposure,
+        hedge_ratio=ctx.current_hedge.hedge_ratio,
+        target_hedge_ratio=target_hedge,
+        hedge_pnl=ctx.current_hedge.hedge_pnl,
+        time_to_expiration_days=days_to_exp,
+        trigger_history=list(observations),
+        active_triggers=[o.trigger_type for o in observations if o.breached],
+        cooldown_until=cooldown_until,
+        in_cooldown=cooldown_until is not None and cooldown_until > now_utc,
+        reassessment_recommended=bool(observations),
+    )
+
+
+def _as_utc(value: "datetime | None") -> "datetime | None":
+    """Coerce a timestamp to tz-aware UTC.
+
+    SQLite has no native ``timezone``-aware column type, so a ``DateTime(timezone=True)``
+    value round-trips **naive** (assumed UTC, since every write here uses
+    ``datetime.now(timezone.utc)``) — comparing it directly against an aware
+    ``now`` raises ``TypeError``. Postgres round-trips aware already; this is a
+    no-op there.
+    """
+    if value is None:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+def _latest_monitoring_state(engine: "Engine | None") -> MonitoringState | None:
+    """The last persisted ``monitoring_state`` row as a thin :class:`MonitoringState`
+    (only ``cooldown_until`` is read downstream, for the cooldown gate)."""
+    if engine is None:
+        return None
+    try:
+        from backend.db.monitoring_repo import MonitoringRepository
+
+        rec = MonitoringRepository(engine).get_latest_state()
+        if rec is None:
+            return None
+        return MonitoringState(
+            cycle_id=rec.cycle_id or "prev",
+            as_of=_as_utc(rec.updated_at) or datetime.now(timezone.utc),
+            cooldown_until=_as_utc(rec.cooldown_until),
+        )
+    except Exception:  # noqa: BLE001
+        logger.debug("MONITORING: could not read the previous monitoring_state", exc_info=True)
+        return None
+
+
+def _dispatch_level2(
+    deps: OrchestratorDeps,
+    ctx: HedgeContext,
+    level1: MonitoringState,
+    escalation: Any,
+    cycle_id: str,
+) -> dict[str, Any] | None:
+    """Run the Level-2 reassessment once — agent + (for a position change) the
+    risk-gated apply-change path. Never raises."""
+    try:
+        decision: ReassessmentDecision = ReassessmentAgent(
+            client=deps.llm_client
+        ).assess(ctx, level1)
+        reassessment_id = _record_reassessment_event(
+            deps.engine, cycle_id, decision, level1
+        )
+        change = None
+        if decision.changes_position:
+            change = apply_change(
+                decision,
+                ctx,
+                risk_client=deps.llm_client,
+                engine=deps.engine,
+                broker=deps.broker,
+                reassessment_id=reassessment_id,
+            )
+        summary = _reassessment_summary(decision, change, escalation)
+        note = (
+            f"MONITORING: Level 2 dispatched — {decision.outcome.value} "
+            f"({escalation.reason})"
+        )
+        return {"decision": decision, "summary": summary, "note": note}
+    except Exception:  # noqa: BLE001 - a monitoring escalation must never break the cycle
+        logger.exception("MONITORING: Level-2 escalation failed for %s", cycle_id)
+        return None
+
+
+def _reassessment_summary(
+    decision: ReassessmentDecision, change: Any, escalation: Any
+) -> dict[str, Any]:
+    """A JSON-serialisable digest of the reassessment for the state channel / row."""
+    summary: dict[str, Any] = {
+        "outcome": decision.outcome.value,
+        "rationale": decision.rationale,
+        "trigger_types": [t.value for t in decision.trigger_types],
+        "emergency": bool(getattr(escalation, "emergency", False)),
+        "bypassed_cooldown": bool(getattr(escalation, "bypassed_cooldown", False)),
+        "changed_position": bool(change is not None and change.plan is not None),
+    }
+    if change is not None:
+        summary.update(
+            {
+                "before_hedge_ratio": change.before_hedge_ratio,
+                "after_hedge_ratio": change.after_hedge_ratio,
+                "delta": change.delta,
+                "submitted": change.submitted,
+                "cleared_risk_gate": change.cleared_risk_gate,
+                "reopen_recommended": change.reopen_recommended,
+                "notes": list(change.notes),
+            }
+        )
+    return summary
+
+
+def _record_reassessment_event(
+    engine: "Engine | None",
+    cycle_id: str,
+    decision: ReassessmentDecision,
+    level1: MonitoringState,
+) -> int | None:
+    """Write one ``reassessment_events`` row linking the trigger to its outcome."""
+    if engine is None:
+        return None
+    try:
+        from backend.db.monitoring_repo import (
+            MonitoringRepository,
+            ReassessmentEventRecord,
+        )
+
+        row = MonitoringRepository(engine).record_reassessment(
+            ReassessmentEventRecord(
+                cycle_id=cycle_id,
+                outcome=decision.outcome,
+                reason=decision.rationale,
+                context={
+                    "trigger_types": [t.value for t in level1.active_triggers],
+                    "confidence": decision.confidence,
+                },
+            )
+        )
+        return row.id
+    except Exception:  # noqa: BLE001
+        logger.exception("MONITORING: reassessment_events write failed for %s", cycle_id)
+        return None
+
+
 def _persist_monitoring(
-    engine: "Engine | None", snapshot: MonitoringState, exec_result: Any
+    engine: "Engine | None",
+    snapshot: MonitoringState,
+    exec_result: Any,
+    reassessment: dict[str, Any] | None = None,
 ) -> None:
     """Best-effort ``monitoring_state`` write — a persist failure at the terminal
     node must not destroy an otherwise complete cycle."""
@@ -784,12 +1065,19 @@ def _persist_monitoring(
             MonitoringStateRecord,
         )
 
-        detail: dict[str, Any] = {"source": "P6-BE-6 monitoring hand-off placeholder"}
+        detail: dict[str, Any] = {
+            "source": "P7-BE-8 monitoring node",
+            "active_triggers": [t.value for t in snapshot.active_triggers],
+            "reassessment_recommended": snapshot.reassessment_recommended,
+        }
         if exec_result is not None:
             detail["execution_status"] = getattr(
                 getattr(exec_result, "status", None), "value", str(exec_result)
             )
-        MonitoringRepository(engine).save_state(
+        if reassessment is not None:
+            detail["reassessment"] = reassessment
+        repo = MonitoringRepository(engine)
+        repo.save_state(
             MonitoringStateRecord(
                 cycle_id=snapshot.cycle_id,
                 current_hedge=_decimal(snapshot.hedge_ratio),
@@ -800,9 +1088,32 @@ def _persist_monitoring(
                 detail=detail,
             )
         )
+        _persist_trigger_events(repo, snapshot)
     except Exception:  # noqa: BLE001
         logger.exception(
             "MONITORING node: could not persist MonitoringState for %s", snapshot.cycle_id
+        )
+
+
+def _persist_trigger_events(repo: Any, snapshot: MonitoringState) -> None:
+    """Write one ``monitoring_events`` row per fired observation (P7-DB-1
+    read-back parity — ``GET /monitoring/events`` sees every node-driven tick)."""
+    from backend.db.monitoring_repo import MonitoringEventRecord
+
+    for obs in snapshot.trigger_history:
+        threshold_dec = Decimal(str(obs.threshold)) if obs.threshold is not None else None
+        repo.record_event(
+            MonitoringEventRecord(
+                cycle_id=snapshot.cycle_id,
+                trigger_type=obs.trigger_type,
+                observed={
+                    "observed_value": obs.observed_value,
+                    "detail": obs.detail,
+                    "is_emergency": obs.is_emergency,
+                },
+                threshold=threshold_dec,
+                fired_at=obs.observed_at,
+            )
         )
 
 
@@ -855,6 +1166,25 @@ def route_after_risk(state: OrchestratorState) -> str:
     ):
         return _MONITORING
     return _EXECUTION
+
+
+def route_after_monitoring(state: OrchestratorState) -> str:
+    """Advisory next step after ``MONITORING`` (task P7-BE-8).
+
+    ``MONITORING`` is terminal in both the full graph and the reassessment
+    sub-graph, so this is **not** wired as a conditional edge — it is a helper
+    for a caller (a scheduler, a demo driver) that wants to chain a follow-up.
+    Returns ``STRATEGY_EVALUATION`` when a first-pass cycle produced an
+    ``INCREASE`` / ``REPLACE`` reassessment (a fresh hedge selection should
+    follow the close), otherwise ``""`` — stop.
+    """
+    if state.get("reassessment_origin"):
+        return ""
+    decision = state.get("reassessment_decision")
+    outcome = getattr(getattr(decision, "outcome", None), "value", None)
+    if outcome in {"INCREASE", "REPLACE"}:
+        return _STRATEGY
+    return ""
 
 
 # --------------------------------------------------------------------------- #
