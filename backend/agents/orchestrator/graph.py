@@ -14,11 +14,15 @@ its phase and writes its contract onto the state. With no ``deps`` the graph
 keeps the placeholders, so the pure-shape checks (and a dependency-free
 ``invoke``) are unchanged.
 
-The edges are still **linear**: ``NO_TRADE`` / ``REJECT`` / ``REASSESS``
-short-circuits toward ``MONITORING`` are advisory (each decision node writes a
-``route`` hint; :func:`~backend.agents.orchestrator.nodes.route_after_strategy`
-and ``route_after_risk`` expose the same decision as pure functions) until
-P6-BE-7 turns them into ``add_conditional_edges``.
+Routing (task P6-BE-7): when :func:`build_state_graph` is given ``deps`` the
+decision points become ``add_conditional_edges`` — ``ANALYZING`` skips straight
+to ``MONITORING`` on a hard/critical failure, ``STRATEGY_EVALUATION`` skips the
+risk gate on ``NO_TRADE`` / ``REASSESS``, and ``RISK_CHECK`` skips the broker on
+``REJECT`` (or any non-``APPROVE``/``MODIFY`` verdict). The branch targets are the
+pure functions :func:`~backend.agents.orchestrator.nodes.route_after_analyzing`,
+``route_after_strategy`` and ``route_after_risk``. The dependency-free skeleton
+(``deps=None``) keeps the plain linear chain so the P6-BE-1 shape checks — and a
+bare ``invoke`` over the placeholders — are unchanged.
 
 The persisted-checkpoint / resume contract lives in
 :mod:`backend.agents.orchestrator.runner` (task P6-DB-2) and is deliberately kept
@@ -79,10 +83,17 @@ class OrchestratorState(TypedDict, total=False):
     ``degraded``; it appends to ``errors`` and routes to ``MONITORING``.
     ``notes`` collects advisory, non-error skips ("REJECT → execution skipped").
 
+    ``halted`` / ``failure_class`` are set by a node whose caught failure the
+    P6-BE-9 classifier judged ``CRITICAL`` (BRD §31 — "do not trade"): the node
+    also sets ``route=MONITORING`` so the cycle short-circuits to the terminal
+    node without touching the broker, and the persistence hook records the exit
+    as ``HALTED`` rather than ``RUNNING``.
+
     The contract payloads (``hedge_context`` … ``monitoring_state``) are written
     by the P6-BE-2…P6-BE-6 nodes; a placeholder run never sets them. ``route`` is
-    the advisory next-node hint a decision node leaves behind — read once by the
-    P6-BE-7 branch functions, not a durable fact (see the module docstring).
+    the next-node hint a decision node leaves behind; with ``deps`` wired it is
+    also what the P6-BE-7 conditional edges act on (via the pure ``route_after_*``
+    functions, which re-derive it from the decision rather than trusting the hint).
     """
 
     cycle_id: str
@@ -92,6 +103,8 @@ class OrchestratorState(TypedDict, total=False):
     errors: Annotated[list[str], operator.add]
     notes: Annotated[list[str], operator.add]
     route: str
+    halted: bool
+    failure_class: str
     hedge_context: HedgeContext
     strategy_decision: StrategyDecision
     risk_decision: RiskDecision
@@ -133,12 +146,14 @@ def _node_bodies(deps: "OrchestratorDeps | None") -> dict[str, Any]:
 
 
 def build_state_graph(deps: "OrchestratorDeps | None" = None) -> StateGraph:
-    """The uncompiled :class:`StateGraph` builder — six nodes chained in order.
+    """The uncompiled :class:`StateGraph` builder.
 
-    ``deps=None`` wires the P6-BE-1 placeholders; an
+    ``deps=None`` wires the P6-BE-1 placeholders in a plain linear chain. An
     :class:`~backend.agents.orchestrator.nodes.OrchestratorDeps` wires the real
-    phase chains. Returned uncompiled so P6-BE-7 can attach the conditional edges
-    before calling :meth:`StateGraph.compile`.
+    phase chains **and** the P6-BE-7 conditional edges at ``ANALYZING`` /
+    ``STRATEGY_EVALUATION`` / ``RISK_CHECK``. Returned uncompiled so a caller can
+    still inspect ``.branches`` / attach a checkpointer before
+    :meth:`StateGraph.compile`.
     """
     graph = StateGraph(OrchestratorState)
 
@@ -147,11 +162,51 @@ def build_state_graph(deps: "OrchestratorDeps | None" = None) -> StateGraph:
         graph.add_node(name, bodies[name])
 
     graph.add_edge(START, GRAPH_NODES[0])
-    for src, dst in zip(GRAPH_NODES, GRAPH_NODES[1:]):
-        graph.add_edge(src, dst)
-    graph.add_edge(GRAPH_NODES[-1], END)
 
+    if deps is None:
+        for src, dst in zip(GRAPH_NODES, GRAPH_NODES[1:]):
+            graph.add_edge(src, dst)
+        graph.add_edge(GRAPH_NODES[-1], END)
+        return graph
+
+    _wire_conditional_edges(graph)
     return graph
+
+
+def _wire_conditional_edges(graph: StateGraph) -> None:
+    """Attach the P6-BE-7 routing — decision points fan out, the rest stays linear.
+
+    ``INITIAL → ANALYZING`` and ``EXECUTION → MONITORING → END`` are unconditional;
+    the three decision nodes route through the pure ``route_after_*`` functions so
+    a ``NO_TRADE`` / ``REASSESS`` / ``REJECT`` (or a critical failure upstream)
+    skips every node it should and lands on ``MONITORING``.
+    """
+    from backend.agents.orchestrator.nodes import (
+        route_after_analyzing,
+        route_after_risk,
+        route_after_strategy,
+    )
+
+    initial, analyzing, strategy, risk, execution, monitoring = GRAPH_NODES
+
+    graph.add_edge(initial, analyzing)
+    graph.add_conditional_edges(
+        analyzing,
+        route_after_analyzing,
+        {strategy: strategy, monitoring: monitoring},
+    )
+    graph.add_conditional_edges(
+        strategy,
+        route_after_strategy,
+        {risk: risk, monitoring: monitoring},
+    )
+    graph.add_conditional_edges(
+        risk,
+        route_after_risk,
+        {execution: execution, monitoring: monitoring},
+    )
+    graph.add_edge(execution, monitoring)
+    graph.add_edge(monitoring, END)
 
 
 def build_orchestrator_graph(

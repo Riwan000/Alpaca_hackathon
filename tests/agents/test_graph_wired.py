@@ -1,9 +1,10 @@
-"""The orchestrator graph wired with real node bodies — P6-BE-2 … P6-BE-6.
+"""The orchestrator graph wired with real node bodies — P6-BE-2 … P6-BE-7.
 
-``build_state_graph(OrchestratorDeps())`` must still compile with **no branches**
-— P6-BE-7 remains the only task that can turn on conditional routing — and a
-full ``invoke`` over the real chain (fake LLM + fake broker + a scratch DB) must
-walk all six nodes once and leave every phase contract on the final state.
+``build_state_graph(OrchestratorDeps())`` compiles the real chain **with** the
+P6-BE-7 conditional edges at the three decision nodes (the ``deps``-free skeleton
+stays linear). A full ``invoke`` over the real chain (fake LLM + fake broker + a
+scratch DB) on a ``SELECT_STRATEGY`` → ``APPROVE`` path still walks all six nodes
+once and leaves every phase contract on the final state.
 """
 
 from __future__ import annotations
@@ -166,9 +167,17 @@ def _fake_llm() -> Any:
     return fake
 
 
-def test_deps_graph_still_has_no_conditional_branching() -> None:
-    builder = build_state_graph(OrchestratorDeps())
-    assert builder.branches == {}
+def test_deps_graph_wires_conditional_branching_at_the_three_decision_nodes() -> None:
+    # P6-BE-7: the real (deps-wired) graph branches; the skeleton stays linear.
+    assert build_state_graph().branches == {}
+    branched = build_state_graph(OrchestratorDeps()).branches
+    assert set(branched) == {"ANALYZING", "STRATEGY_EVALUATION", "RISK_CHECK"}
+    ends = {src: set(next(iter(spec.values())).ends) for src, spec in branched.items()}
+    assert ends == {
+        "ANALYZING": {"STRATEGY_EVALUATION", "MONITORING"},
+        "STRATEGY_EVALUATION": {"RISK_CHECK", "MONITORING"},
+        "RISK_CHECK": {"EXECUTION", "MONITORING"},
+    }
 
 
 def test_full_invoke_walks_every_node_and_fills_the_state(migrated_engine) -> None:

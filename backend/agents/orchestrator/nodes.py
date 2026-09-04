@@ -20,12 +20,26 @@ node                    wraps                                writes
 the graph state, so a later ``SqliteSaver`` only has to serialise the pydantic
 payloads.
 
-**Routing is still linear.** Each decision node writes an advisory ``route`` hint
-and :func:`route_after_strategy` / :func:`route_after_risk` expose the same
-decision as pure functions; P6-BE-7 turns them into ``add_conditional_edges``.
-Until then ``RISK_CHECK`` and ``EXECUTION`` guard themselves — a ``NO_TRADE`` /
-``REASSESS`` strategy decision or a non-``APPROVE`` risk verdict never reaches the
-broker even though the linear walk still visits the node.
+**Routing (P6-BE-7).** Each decision node writes a ``route`` hint and
+:func:`route_after_analyzing` / :func:`route_after_strategy` /
+:func:`route_after_risk` re-derive the same next node as pure functions;
+:func:`~backend.agents.orchestrator.graph.build_state_graph` attaches them as
+``add_conditional_edges`` when it is given ``deps``. ``RISK_CHECK`` and
+``EXECUTION`` still self-guard as a belt-and-braces check — a ``NO_TRADE`` /
+``REASSESS`` decision or a non-``APPROVE`` verdict never reaches the broker even
+if a caller runs the linear (``deps``-free) skeleton.
+
+**Retry & failure class (P6-BE-8 / P6-BE-9).** ``ANALYZING`` retries its live
+inputs fetch with bounded backoff (:func:`~backend.agents.orchestrator.resilience.run_with_retry`)
+before giving up. Any caught node failure is run through
+:func:`~backend.agents.orchestrator.resilience.classify_failure`: ``CRITICAL``
+(BRD §31 — broker auth, risk engine down, invalid execution state) sets
+``halted`` and routes to ``MONITORING`` so nothing trades; ``RECOVERABLE`` (a
+news / enrichment source down) degrades and carries on.
+
+**Transition persistence (P6-BE-10).** :func:`build_nodes` wraps every body so
+entering and leaving it writes a timestamped ``workflow_state`` row via a
+:class:`~backend.agents.orchestrator.persistence.TransitionSink`.
 
 **Persistence divergence from ``POST /execute``.** The ``risk_checks`` row is
 written once, by ``RISK_CHECK`` (``RiskAgent.review(repo=...)``); ``EXECUTION``
@@ -44,13 +58,13 @@ Known gap: a *legged fallback* (``constraints.allow_legging`` — set only by a
 risk ``MODIFY``) that fills an early leg then raises on a later one leaves that
 leg live with no ``orders`` row, because :func:`submit_plan` raises rather than
 returning a partial outcome. This is inherited from ``submit_plan`` (``POST
-/execute`` has the same exposure and no guard at all); the fix belongs there —
-tracked for P6-BE-7 / P6-BE-8.
+/execute`` has the same exposure and no guard at all); the fix belongs there.
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -77,6 +91,18 @@ from backend.agents.strategies import (
     prefilter,
 )
 from backend.agents.orchestrator.graph import OrchestratorState
+from backend.agents.orchestrator.persistence import (
+    TransitionSink,
+    WorkflowTransitionSink,
+    wrap_with_transition_hook,
+)
+from backend.agents.orchestrator.resilience import (
+    FailureClass,
+    RetryPolicy,
+    classify_failure,
+    is_transient,
+    run_with_retry,
+)
 from backend.integrations.alpaca.client import AlpacaError
 from backend.integrations.alpaca.orders import OrderSubmitter, SubmitOutcome, submit_plan
 from backend.models.enums import (
@@ -103,6 +129,7 @@ __all__ = [
     "risk_check_node",
     "execution_node",
     "monitoring_node",
+    "route_after_analyzing",
     "route_after_strategy",
     "route_after_risk",
 ]
@@ -122,6 +149,7 @@ _EXECUTABLE_VERDICTS: frozenset[RiskVerdict] = frozenset(
 )
 
 _MONITORING = WorkflowNode.MONITORING.value
+_STRATEGY = WorkflowNode.STRATEGY_EVALUATION.value
 _RISK_CHECK = WorkflowNode.RISK_CHECK.value
 _EXECUTION = WorkflowNode.EXECUTION.value
 
@@ -151,6 +179,17 @@ class OrchestratorDeps:
     #: (contract / price band / quote staleness). Mirrors ``ExecuteRequest.preflight``;
     #: turn it off only to replay a recorded cycle whose context is deliberately stale.
     preflight: bool = True
+    #: P6-BE-8 — bounded retry with backoff around a node's external fetch
+    #: (currently the ``inputs_provider`` in ``ANALYZING``). ``None`` uses the
+    #: default policy (3 attempts, 0.5s base, ×2 backoff).
+    retry_policy: RetryPolicy | None = None
+    #: Injected so tests assert on the backoff schedule without waiting.
+    sleep: Callable[[float], None] = time.sleep
+    #: P6-BE-10 — where every node ENTER/EXIT is recorded. ``None`` + an ``engine``
+    #: builds a :class:`WorkflowTransitionSink`; ``None`` + no engine disables the
+    #: hook. ``persist_transitions=False`` disables it even with an engine.
+    transition_sink: TransitionSink | None = None
+    persist_transitions: bool = True
 
 
 def _default_inputs_provider(_cycle_id: str | None) -> "AnalysisInputs":
@@ -180,6 +219,29 @@ def _decimal(value: float | None) -> Decimal:
     return Decimal(str(value if value is not None else 0.0))
 
 
+def _failure_payload(
+    node: WorkflowNode, exc: BaseException, *, note: str | None = None
+) -> dict[str, Any]:
+    """A stamped payload for a caught node failure, classified per BRD §31 (P6-BE-9).
+
+    Always routes to ``MONITORING`` and records an ``errors`` entry. A
+    ``CRITICAL`` classification also sets ``halted`` / ``failure_class`` so the
+    cycle stops before the broker and the persistence hook logs the exit as
+    ``HALTED``; a ``RECOVERABLE`` one just carries the class for the audit trail.
+    """
+    cls = classify_failure(exc, stage=node)
+    payload: dict[str, Any] = {
+        "route": _MONITORING,
+        "errors": [f"{node.value}: {type(exc).__name__}: {exc}"],
+        "failure_class": cls.value,
+    }
+    if cls is FailureClass.CRITICAL:
+        payload["halted"] = True
+    if note:
+        payload["notes"] = [note]
+    return _stamp(node, **payload)
+
+
 # --------------------------------------------------------------------------- #
 # P6-BE-2 — ANALYZING
 # --------------------------------------------------------------------------- #
@@ -195,6 +257,7 @@ def analyzing_node(deps: OrchestratorDeps) -> NodeBody:
     context: that is an ``errors`` entry + ``route=MONITORING``, never a crash.
     """
     provider = deps.inputs_provider or _default_inputs_provider
+    policy = deps.retry_policy or RetryPolicy()
     if deps.engine is None:
         logger.warning("ANALYZING node built with engine=None; agent_runs will not persist")
 
@@ -202,7 +265,14 @@ def analyzing_node(deps: OrchestratorDeps) -> NodeBody:
         cycle_id = state.get("cycle_id")
         run_repo = _agent_run_repo(deps.engine)
         try:
-            inputs = provider(cycle_id)
+            # P6-BE-8 — a transient blip fetching live inputs is retried (bounded,
+            # backing off) before the node falls back to degrade / halt.
+            inputs = run_with_retry(
+                lambda: provider(cycle_id),
+                policy=policy,
+                retry_on=is_transient,
+                sleep=deps.sleep,
+            )
             if cycle_id and inputs.cycle_id != cycle_id:
                 inputs = inputs.model_copy(update={"cycle_id": cycle_id})
             ctx = assemble_hedge_context(
@@ -211,13 +281,9 @@ def analyzing_node(deps: OrchestratorDeps) -> NodeBody:
                 agent_fns=deps.agent_fns,
                 run_repo=run_repo,
             )
-        except Exception as exc:  # noqa: BLE001 - a hard analysis failure degrades the cycle, never crashes it
+        except Exception as exc:  # noqa: BLE001 - a hard analysis failure degrades/halts the cycle, never crashes it
             logger.exception("ANALYZING node could not build a HedgeContext")
-            return _stamp(
-                WorkflowNode.ANALYZING,
-                route=_MONITORING,
-                errors=[f"ANALYZING: {type(exc).__name__}: {exc}"],
-            )
+            return _failure_payload(WorkflowNode.ANALYZING, exc)
 
         payload: dict[str, Any] = {"hedge_context": ctx, "cycle_id": ctx.cycle_id}
         if ctx.degraded_sections:
@@ -268,11 +334,7 @@ def strategy_evaluation_node(deps: OrchestratorDeps) -> NodeBody:
             decision = StrategyManager(client=deps.llm_client).run(pre, ctx)
         except Exception as exc:  # noqa: BLE001 - a strategy-layer failure routes to MONITORING, never crashes
             logger.exception("STRATEGY_EVALUATION node failed")
-            return _stamp(
-                WorkflowNode.STRATEGY_EVALUATION,
-                route=_MONITORING,
-                errors=[f"STRATEGY_EVALUATION: {type(exc).__name__}: {exc}"],
-            )
+            return _failure_payload(WorkflowNode.STRATEGY_EVALUATION, exc)
 
         skip = decision.decision in _SKIP_STRATEGY
         payload: dict[str, Any] = {
@@ -327,11 +389,9 @@ def risk_check_node(deps: OrchestratorDeps) -> NodeBody:
             )
         except Exception as exc:  # noqa: BLE001 - a gate failure fails safe: no execution
             logger.exception("RISK_CHECK node failed")
-            return _stamp(
-                WorkflowNode.RISK_CHECK,
-                route=_MONITORING,
-                errors=[f"RISK_CHECK: {type(exc).__name__}: {exc}"],
-            )
+            # A failure in the risk gate is CRITICAL per BRD §31 ("risk engine
+            # unavailable" → do not trade): _failure_payload halts the cycle.
+            return _failure_payload(WorkflowNode.RISK_CHECK, exc)
 
         clear = risk_decision.verdict in _EXECUTABLE_VERDICTS
         payload: dict[str, Any] = {
@@ -432,7 +492,11 @@ def execution_node(deps: OrchestratorDeps) -> NodeBody:
             # stays retryable. (A legged fallback that fills one leg then raises
             # is the known gap noted in the module docstring — submit_plan raises
             # instead of returning a partial outcome; the fix belongs there.)
-            return _failed(plan.cycle_id, f"broker submit failed: {exc}", engine=deps.engine)
+            # BRD §31: a broker failure at the execution leg is CRITICAL — the
+            # cycle halts (P6-BE-9), even though it stays retryable on the DB side.
+            return _failed(
+                plan.cycle_id, f"broker submit failed: {exc}", engine=deps.engine, exc=exc
+            )
 
         # An order is now live at the broker. From here every path writes an
         # ``orders`` row so a re-invoke's idempotency guard finds it.
@@ -459,22 +523,33 @@ def execution_node(deps: OrchestratorDeps) -> NodeBody:
 
 
 def _failed(
-    cycle_id: str, message: str, *, engine: "Engine | None" = None
+    cycle_id: str,
+    message: str,
+    *,
+    engine: "Engine | None" = None,
+    exc: BaseException | None = None,
 ) -> dict[str, Any]:
     """A stamped EXECUTION payload for a failure *before* any order was placed.
 
     Writes an ``execution_failures`` audit row (when an engine is given) but no
-    ``orders`` row — the cycle stays retryable.
+    ``orders`` row — the cycle stays retryable. When ``exc`` is supplied it is
+    classified (P6-BE-9); a ``CRITICAL`` verdict also flags ``halted`` /
+    ``failure_class`` so the persistence hook logs the exit as ``HALTED``.
     """
     _record_failure(engine, cycle_id, message)
     result = ExecutionResult(
         cycle_id=cycle_id, status=ExecutionStatus.FAILED, error=message
     )
-    return _stamp(
-        WorkflowNode.EXECUTION,
-        execution_result=result,
-        errors=[f"EXECUTION: {message}"],
-    )
+    payload: dict[str, Any] = {
+        "execution_result": result,
+        "errors": [f"EXECUTION: {message}"],
+    }
+    if exc is not None:
+        cls = classify_failure(exc, stage=WorkflowNode.EXECUTION)
+        payload["failure_class"] = cls.value
+        if cls is FailureClass.CRITICAL:
+            payload["halted"] = True
+    return _stamp(WorkflowNode.EXECUTION, **payload)
 
 
 def _order_already_on_file(engine: "Engine | None", cycle_id: str) -> bool:
@@ -635,6 +710,22 @@ def _persist_monitoring(
 # --------------------------------------------------------------------------- #
 
 
+def route_after_analyzing(state: OrchestratorState) -> str:
+    """Next node after ``ANALYZING``.
+
+    ``STRATEGY_EVALUATION`` on a healthy run; ``MONITORING`` when the node
+    produced no :class:`HedgeContext` — a hard failure (which set
+    ``route=MONITORING``) or a ``CRITICAL`` classification (which also set
+    ``halted``). Skipping straight to the terminal node is what "the cycle halts
+    before ``EXECUTION``" means for an upstream failure (BRD §31).
+    """
+    if state.get("halted") or state.get("route") == _MONITORING:
+        return _MONITORING
+    if _context(state) is None:
+        return _MONITORING
+    return _STRATEGY
+
+
 def route_after_strategy(state: OrchestratorState) -> str:
     """Next node after ``STRATEGY_EVALUATION``.
 
@@ -675,9 +766,30 @@ def _initial_node(state: OrchestratorState) -> dict[str, Any]:
     return _stamp(WorkflowNode.INITIAL)
 
 
+def _resolve_transition_sink(deps: OrchestratorDeps) -> TransitionSink | None:
+    """Where node ENTER/EXIT is recorded (P6-BE-10) — explicit sink, else one over
+    the engine, else nothing."""
+    if deps.transition_sink is not None:
+        return deps.transition_sink
+    if deps.engine is not None and deps.persist_transitions:
+        try:
+            return WorkflowTransitionSink(deps.engine)
+        except Exception:  # noqa: BLE001 - a missing table must not stop the graph building
+            logger.exception(
+                "could not build a WorkflowTransitionSink; node transitions will not persist"
+            )
+    return None
+
+
 def build_nodes(deps: OrchestratorDeps) -> dict[str, NodeBody]:
-    """The six node bodies keyed by :class:`WorkflowNode` value, built from ``deps``."""
-    return {
+    """The six node bodies keyed by :class:`WorkflowNode` value, built from ``deps``.
+
+    Every body is wrapped with the P6-BE-10 persistence hook when a transition
+    sink is available (an explicit ``deps.transition_sink`` or one built over
+    ``deps.engine``), so entering and leaving each node writes a timestamped
+    ``workflow_state`` / ``workflow_transitions`` row.
+    """
+    bodies: dict[str, NodeBody] = {
         WorkflowNode.INITIAL.value: _initial_node,
         WorkflowNode.ANALYZING.value: analyzing_node(deps),
         WorkflowNode.STRATEGY_EVALUATION.value: strategy_evaluation_node(deps),
@@ -685,3 +797,4 @@ def build_nodes(deps: OrchestratorDeps) -> dict[str, NodeBody]:
         WorkflowNode.EXECUTION.value: execution_node(deps),
         WorkflowNode.MONITORING.value: monitoring_node(deps),
     }
+    return wrap_with_transition_hook(bodies, _resolve_transition_sink(deps))
