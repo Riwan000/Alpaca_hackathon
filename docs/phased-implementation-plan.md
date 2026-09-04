@@ -616,9 +616,9 @@ Wire Phases 3–5 into one stateful pass. First hands-off cycle.
   - [x] Confirm — `GET /cycle/{cycle_id}/state` implemented in `backend/api/workflow.py` returning current state and transitions history; `tests/api/test_cycle_state.py` green.
 
 ### Backend
-- [ ] **P6-BE-1** — LangGraph state-machine skeleton — nodes `INITIAL → ANALYZING → STRATEGY_EVALUATION → RISK_CHECK → EXECUTION → MONITORING`.
+- [x] **P6-BE-1** — LangGraph state-machine skeleton — nodes `INITIAL → ANALYZING → STRATEGY_EVALUATION → RISK_CHECK → EXECUTION → MONITORING`.
   - Test: `tests/agents/test_graph_shape.py` — graph compiles; edges match the spec; no unreachable node.
-  - [ ] Confirm — render the graph; the six nodes chain in order.
+  - [x] Confirm — `backend/agents/orchestrator/graph.py` builds the six-node `StateGraph` (`build_orchestrator_graph`); `python -m backend.agents.orchestrator.graph` renders the mermaid graph with the six nodes chained in order. `tests/agents/test_graph_shape.py` (8 cases) green: exact edge-set match, START/END reachability, end-to-end invoke visits the six in order. Node bodies are placeholders for P6-BE-2…P6-BE-6; conditional edges are P6-BE-7.
 - [ ] **P6-BE-2** — Node: `ANALYZING` wraps the Phase 3 chain and builds `HedgeContext`.
   - Test: `tests/agents/test_node_analyzing.py` — node output state carries a valid `HedgeContext`; agent failure sets `degraded`.
   - [ ] Confirm — run the node alone; context is populated.
