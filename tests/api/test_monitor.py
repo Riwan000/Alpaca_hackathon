@@ -183,3 +183,61 @@ def test_scheduler_start_fires_then_stops() -> None:
 
     assert hits["n"] >= 1
     assert sched.running is False
+
+
+# --------------------------------------------------------------------------- #
+# create_app() startup/shutdown wiring — ``Settings.enable_monitor_scheduler``
+# --------------------------------------------------------------------------- #
+
+
+class _FakeSchedulerSettings:
+    """Just enough of :class:`~backend.config.Settings` for the startup hook."""
+
+    def __init__(self, enable_monitor_scheduler: bool) -> None:
+        self.enable_monitor_scheduler = enable_monitor_scheduler
+
+
+@pytest.fixture
+def isolated_scheduler(monkeypatch: pytest.MonkeyPatch) -> MonitorScheduler:
+    """Swap the process-wide scheduler singleton for a throwaway one.
+
+    ``create_app()``'s startup/shutdown hooks call
+    :func:`backend.api.monitor.get_monitor_scheduler` /
+    :func:`~backend.api.monitor.install_demo_monitor_tick`, both of which resolve
+    the module-level ``_SCHEDULER`` — patch that so this test never touches (or
+    is affected by) the real singleton other tests in this module use.
+    """
+    import backend.api.monitor as monitor_module
+
+    fresh = MonitorScheduler()
+    monkeypatch.setattr(monitor_module, "_SCHEDULER", fresh)
+    return fresh
+
+
+def test_create_app_does_not_start_scheduler_by_default(
+    monkeypatch: pytest.MonkeyPatch, isolated_scheduler: MonitorScheduler
+) -> None:
+    """``enable_monitor_scheduler`` defaults off — no tick fires without opt-in."""
+    monkeypatch.setattr(
+        "backend.config.get_settings", lambda: _FakeSchedulerSettings(False)
+    )
+
+    with TestClient(create_app()):
+        assert isolated_scheduler.running is False
+        assert DEMO_TICK_JOB_ID not in isolated_scheduler.jobs
+
+
+def test_create_app_starts_scheduler_when_enabled(
+    monkeypatch: pytest.MonkeyPatch, isolated_scheduler: MonitorScheduler
+) -> None:
+    """The flag on: the demo tick is registered and the scheduler is running,
+    and it is stopped again on shutdown."""
+    monkeypatch.setattr(
+        "backend.config.get_settings", lambda: _FakeSchedulerSettings(True)
+    )
+
+    with TestClient(create_app()):
+        assert isolated_scheduler.running is True
+        assert DEMO_TICK_JOB_ID in isolated_scheduler.jobs
+
+    assert isolated_scheduler.running is False

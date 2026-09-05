@@ -96,6 +96,12 @@ class Settings(BaseSettings):
     hedge_drift_threshold_pct: float = Field(default=0.05, gt=0, le=1)
     reassessment_cooldown_seconds: int = Field(default=300, ge=0)
 
+    # --- Monitoring scheduler (BRD §24) -------------------------------
+    # Off by default: ``create_app()`` runs under many tests via a plain
+    # ``TestClient(create_app())`` and must not spin up a background timer
+    # thread unless a deployment explicitly opts in (task P7-BE-9).
+    enable_monitor_scheduler: bool = False
+
     # --- Derived views -------------------------------------------------
     @property
     def migration_dsn(self) -> str:

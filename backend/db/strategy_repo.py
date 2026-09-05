@@ -270,6 +270,22 @@ class StrategyDecisionRepository:
             )
         return self._to_record(row)
 
+    def list_all_recent_first(self) -> list[StrategyDecisionRecord]:
+        """Every decision across all cycles, most recently inserted first.
+
+        Used to walk cycles backward from "now" (e.g.
+        :func:`backend.agents.ingest.reconstruct_current_hedge`) looking for the
+        latest one that actually resulted in orders — there is no single "all
+        cycle ids, ordered" index, so this is the recency source of truth.
+        """
+        with self._engine.connect() as conn:
+            rows = (
+                conn.execute(select(self._table).order_by(self._table.c.id.desc()))
+                .mappings()
+                .all()
+            )
+        return [rec for rec in (self._to_record(r) for r in rows) if rec is not None]
+
     def count(self) -> int:
         """Number of rows currently in ``strategy_decisions``."""
         with self._engine.connect() as conn:

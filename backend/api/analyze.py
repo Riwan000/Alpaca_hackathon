@@ -45,10 +45,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["analyze"])
 
 
-def provide_analysis_inputs() -> AnalysisInputs:
-    """Build the live inputs bundle for one cycle (overridden in tests)."""
+def provide_analysis_inputs(
+    engine: Engine = Depends(get_readback_engine),
+) -> AnalysisInputs:
+    """Build the live inputs bundle for one cycle (overridden in tests).
+
+    Passes ``engine`` through so ``current_hedge`` reflects the hedge actually
+    on the book (:func:`~backend.agents.ingest.reconstruct_current_hedge`)
+    rather than always defaulting to empty.
+    """
     try:
-        return build_live_analysis_inputs()
+        return build_live_analysis_inputs(engine=engine)
     except IngestError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

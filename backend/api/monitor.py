@@ -84,15 +84,25 @@ MonitorContextProvider = Callable[[str | None], "HedgeContext | None"]
 def _live_monitor_context(cycle_id: str | None) -> HedgeContext | None:
     """Best-effort live hedge context for a manual tick.
 
-    Builds the same Phase-3 context the orchestrator's ``ANALYZING`` node does.
-    Returns ``None`` (rather than raising) when credentials / data are missing so
-    the endpoint still answers on a cold environment.
+    Builds the same Phase-3 context the orchestrator's ``ANALYZING`` node does,
+    with ``current_hedge`` reconstructed from order history the same way
+    ``POST /analyze`` does — a DB-unavailable environment still degrades to the
+    empty default rather than failing the tick. Returns ``None`` (rather than
+    raising) when credentials / data are missing so the endpoint still answers
+    on a cold environment.
     """
     try:
         from backend.agents.assembler import assemble_hedge_context
         from backend.agents.ingest import build_live_analysis_inputs
+        from backend.api.readback import get_readback_engine
 
-        inputs = build_live_analysis_inputs()
+        try:
+            engine = get_readback_engine()
+        except Exception:  # noqa: BLE001 - no DB configured; keep current_hedge empty
+            logger.warning("POST /monitor: readback engine unavailable for current_hedge", exc_info=True)
+            engine = None
+
+        inputs = build_live_analysis_inputs(engine=engine)
         if cycle_id and inputs.cycle_id != cycle_id:
             inputs = inputs.model_copy(update={"cycle_id": cycle_id})
         return assemble_hedge_context(inputs)
