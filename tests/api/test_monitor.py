@@ -2,6 +2,8 @@
 
 Confirms:
 - a manual tick returns the fired triggers (or none) and the escalation verdict;
+- an escalating tick actually dispatches the Level-2 reassessment (and its
+  apply-change follow-through) rather than only reporting the alert;
 - the tick persists ``monitoring_events`` / ``monitoring_state`` so the read-back
   endpoints reflect it;
 - a tick with no available context still answers (no 500);
@@ -11,6 +13,7 @@ Confirms:
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import os
 import subprocess
 import sys
@@ -21,11 +24,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 
+from backend.agents.orchestrator.nodes import OrchestratorDeps
 from backend.api import create_app
 from backend.api.monitor import (
     DEMO_TICK_JOB_ID,
     MonitorScheduler,
     get_monitor_context,
+    get_monitor_deps_factory,
     install_demo_monitor_tick,
 )
 from backend.api.readback import get_readback_engine
@@ -119,6 +124,34 @@ def test_manual_tick_reports_fired_triggers(client: TestClient) -> None:
     # the tick persisted its events — the read-back endpoint sees them
     events = client.get("/monitoring/events", params={"cycle_id": "cyc-monitor-api"}).json()
     assert any(e["trigger_type"] == "PORTFOLIO_DELTA" for e in events)
+
+
+def test_manual_tick_dispatches_level2_and_applies_change(client: TestClient) -> None:
+    """An escalating tick doesn't just report the alert — it runs the Level-2
+    reassessment and (for a position-changing outcome) the risk-gated
+    apply-change, exactly like a full orchestrator cycle's MONITORING node."""
+    from tests.conftest import FakeLLMClient
+
+    fake = FakeLLMClient()
+    fake.response_content = json.dumps(
+        {"outcome": "DECREASE", "rationale": "trim toward the lower target", "confidence": 0.8}
+    )
+    client.app.dependency_overrides[get_monitor_context] = lambda: _DRIFT_CTX  # type: ignore[attr-defined]
+    client.app.dependency_overrides[get_monitor_deps_factory] = (  # type: ignore[attr-defined]
+        lambda: (lambda engine: OrchestratorDeps(engine=engine, llm_client=fake))
+    )
+
+    res = client.post("/monitor", json={"cycle_id": "cyc-monitor-api"})
+    assert res.status_code == 200, res.text
+    body = res.json()
+
+    assert body["escalate"] is True
+    assert body["reassessment"] is not None
+    assert body["reassessment"]["outcome"] == "DECREASE"
+    assert body["reassessment"]["changed_position"] is True
+    # no broker wired by default -> gated, but not live-submitted
+    assert body["reassessment"]["submitted"] is False
+    assert "Level 2 dispatched" in body["note"]
 
 
 def test_manual_tick_with_no_triggers_is_all_clear(client: TestClient) -> None:

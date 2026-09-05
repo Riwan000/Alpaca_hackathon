@@ -208,11 +208,25 @@ def _make_analysis_inputs(cycle_id: str | None = None) -> AnalysisInputs:
 def _wait_for_completion(
     repo: WorkflowRepository, cycle_id: str, timeout_sec: float = 30.0
 ) -> Any:
-    """Poll until the cycle reaches the terminal MONITORING node."""
+    """Poll until the cycle's terminal MONITORING node has actually finished.
+
+    ``workflow_state.current_node`` flips to ``"MONITORING"`` the instant its
+    *ENTER* transition is recorded — before the node body (which now may run a
+    P7-BE-5 reopen sub-pipeline, itself several agent calls deep) has done any
+    work. Waiting on that alone races the node's own persistence (the ``GET
+    /workflow-state/stream`` SSE endpoint gets this right already — it waits for
+    the MONITORING *EXIT* transition, or a terminal node). Match that here:
+    require ``detail.phase == "EXIT"`` too, so callers only ever see a state
+    whose ``monitoring_state`` / order / hedge-change rows are already written.
+    """
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
         state = repo.get_state(cycle_id)
-        if state and state.current_node == "MONITORING":
+        if (
+            state
+            and state.current_node == "MONITORING"
+            and (state.detail or {}).get("phase") == "EXIT"
+        ):
             return state
         time.sleep(0.1)
     state = repo.get_state(cycle_id)

@@ -114,6 +114,7 @@ from backend.agents.monitoring.reassessment import (
 from backend.models.enums import (
     DecisionType,
     ExecutionStatus,
+    HedgeAction,
     RiskVerdict,
     TriggerType,
     WorkflowNode,
@@ -199,6 +200,15 @@ class OrchestratorDeps:
     #: hook. ``persist_transitions=False`` disables it even with an engine.
     transition_sink: TransitionSink | None = None
     persist_transitions: bool = True
+    #: P7-BE-5 reopen nesting only — set on the deps a *nested* reassessment
+    #: sub-graph runs with (see ``_run_reopen_cycle``), never by a normal caller.
+    #: The nested cycle re-enters at the same ``cycle_id`` as the ``MONITORING``
+    #: node already dispatching it, and that outer node persists its own
+    #: monitoring_state right after the nested call returns — without this flag
+    #: the nested cycle's own terminal MONITORING would persist a second,
+    #: immediately-superseded monitoring_state row (and duplicate every trigger's
+    #: monitoring_events row) for the identical cycle_id.
+    skip_monitoring_persist: bool = False
 
 
 def _default_inputs_provider(_cycle_id: str | None) -> "AnalysisInputs":
@@ -791,7 +801,8 @@ def monitoring_node(deps: OrchestratorDeps) -> NodeBody:
             elif level1.active_triggers:
                 notes.append(f"MONITORING: {esc.reason}")
 
-        _persist_monitoring(deps.engine, level1, exec_result, reassess_summary)
+        if not deps.skip_monitoring_persist:
+            _persist_monitoring(deps.engine, level1, exec_result, reassess_summary)
         if notes:
             payload["notes"] = notes
         return _stamp(WorkflowNode.MONITORING, **payload)
@@ -960,8 +971,18 @@ def _dispatch_level2(
     escalation: Any,
     cycle_id: str,
 ) -> dict[str, Any] | None:
-    """Run the Level-2 reassessment once — agent + (for a position change) the
-    risk-gated apply-change path. Never raises."""
+    """Run the Level-2 reassessment once — agent + the follow-through that turns
+    its outcome into an actual position change. Never raises.
+
+    ``DECREASE`` / ``REMOVE`` / ``REPLACE`` trim or close the existing legs
+    directly via :func:`~backend.agents.monitoring.apply_change.apply_change`.
+    ``INCREASE`` (add protection) can't be built the same way — there is no
+    existing leg to invert, it needs a *freshly selected* structure — and a
+    ``REPLACE`` that cleared its close still needs the re-open apply_change only
+    flags. Both are handed to :func:`_run_reopen_cycle`, which re-enters
+    ``STRATEGY_EVALUATION`` (task P7-BE-5) instead of leaving the outcome
+    unactioned.
+    """
     try:
         decision: ReassessmentDecision = ReassessmentAgent(
             client=deps.llm_client
@@ -979,7 +1000,19 @@ def _dispatch_level2(
                 broker=deps.broker,
                 reassessment_id=reassessment_id,
             )
+
+        reopen: dict[str, Any] | None = None
+        needs_reopen = decision.outcome is HedgeAction.INCREASE or (
+            change is not None
+            and change.reopen_recommended
+            and change.cleared_risk_gate
+        )
+        if needs_reopen:
+            reopen = _run_reopen_cycle(deps, ctx, level1, escalation)
+
         summary = _reassessment_summary(decision, change, escalation)
+        if reopen is not None:
+            summary["reopen"] = reopen
         note = (
             f"MONITORING: Level 2 dispatched — {decision.outcome.value} "
             f"({escalation.reason})"
@@ -987,6 +1020,66 @@ def _dispatch_level2(
         return {"decision": decision, "summary": summary, "note": note}
     except Exception:  # noqa: BLE001 - a monitoring escalation must never break the cycle
         logger.exception("MONITORING: Level-2 escalation failed for %s", cycle_id)
+        return None
+
+
+def _run_reopen_cycle(
+    deps: OrchestratorDeps,
+    ctx: HedgeContext,
+    level1: MonitoringState,
+    escalation: Any,
+) -> dict[str, Any] | None:
+    """Re-select and risk-gate a fresh hedge for an ``INCREASE`` / re-opened
+    ``REPLACE`` outcome (task P7-BE-5).
+
+    Re-enters the reassessment sub-graph at ``STRATEGY_EVALUATION`` —
+    :func:`~backend.agents.monitoring.escalation.run_reassessment_cycle` compiles
+    ``STRATEGY_EVALUATION -> RISK_CHECK -> EXECUTION -> MONITORING`` from the same
+    node bodies this graph uses — so the four strategy agents size a structure
+    against the *current* target hedge ratio and it clears the same risk gate as
+    any other trade. Its terminal ``MONITORING`` carries
+    ``reassessment_origin=True`` and does not escalate again, so this stays one
+    hop, not a recursion. Never raises: a failure here is a note on the parent
+    dispatch, not a broken monitoring cycle.
+
+    Runs with a *reopen-scoped* copy of ``deps`` — ``persist_transitions=False``
+    and ``skip_monitoring_persist=True`` — because this nested cycle shares the
+    parent ``MONITORING`` node's own ``cycle_id``: strategy/risk/order
+    persistence (the real audit trail for whatever this sizes) still goes
+    through unchanged, but its own ``workflow_state``/``workflow_transitions``
+    and terminal monitoring_state writes would otherwise race and duplicate the
+    parent's — the parent persists its own monitoring_state right after this
+    call returns, and is the only one that should record a MONITORING
+    ENTER/EXIT for this cycle_id.
+    """
+    try:
+        import dataclasses
+
+        from backend.agents.monitoring.escalation import run_reassessment_cycle
+
+        reopen_deps = dataclasses.replace(
+            deps, persist_transitions=False, skip_monitoring_persist=True
+        )
+        out = run_reassessment_cycle(reopen_deps, ctx, level1, escalation=escalation)
+        strategy_decision = out.get("strategy_decision")
+        risk_decision = out.get("risk_decision")
+        execution_result = out.get("execution_result")
+        return {
+            "visited": out.get("visited"),
+            "strategy_outcome": getattr(
+                getattr(strategy_decision, "decision", None), "value", None
+            ),
+            "risk_verdict": getattr(
+                getattr(risk_decision, "verdict", None), "value", None
+            ),
+            "submitted": getattr(execution_result, "status", None)
+            in {ExecutionStatus.FILLED, ExecutionStatus.PARTIALLY_FILLED},
+        }
+    except Exception:  # noqa: BLE001 - the reopen pass must never break MONITORING
+        logger.exception(
+            "MONITORING: reopen cycle (STRATEGY_EVALUATION re-entry) failed for %s",
+            ctx.cycle_id,
+        )
         return None
 
 

@@ -1499,6 +1499,18 @@
             "title": "Persisted",
             "type": "boolean"
           },
+          "reassessment": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reassessment"
+          },
           "triggers": {
             "default": [],
             "items": {
@@ -4253,7 +4265,7 @@
     },
     "/monitor": {
       "post": {
-        "description": "Run Level-1 checks once and report the fired triggers (task P7-BE-9).",
+        "description": "Run Level-1 checks and dispatch Level 2 on a fired, escalating trigger\n(task P7-BE-9).\n\nDelegates to :func:`~backend.agents.orchestrator.nodes.monitoring_node` — the\nsame ``MONITORING`` node body a full orchestrator cycle runs — so a manual or\nscheduled tick closes the adaptive loop exactly like a cycle would: a\nde-risking outcome goes through :func:`~backend.agents.monitoring.apply_change.apply_change`,\nand an ``INCREASE`` (or a re-opened ``REPLACE``) goes through a fresh\n``STRATEGY_EVALUATION -> RISK_CHECK -> EXECUTION`` pass instead of sitting as\nan unactioned alert.",
         "operationId": "monitor_tick_monitor_post",
         "requestBody": {
           "content": {

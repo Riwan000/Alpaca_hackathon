@@ -137,6 +137,40 @@ def test_triggered_cycle_dispatches_level2_once(migrated_engine, monkeypatch) ->
     assert repo.get_latest_state().detail["reassessment"]["outcome"] == "DECREASE"
 
 
+def test_increase_outcome_reopens_via_strategy_evaluation(migrated_engine) -> None:
+    """An INCREASE outcome can't be built by inverting existing legs — there is
+    nothing to trim toward. It must re-enter STRATEGY_EVALUATION to size a fresh
+    structure (task P7-BE-5) instead of being recorded and left unactioned."""
+    # No llm_client: both ReassessmentAgent and StrategyManager fall back to
+    # their deterministic heuristics. Deep drawdown + vol spike -> INCREASE.
+    deps = OrchestratorDeps(engine=migrated_engine)
+    node = monitoring_node(deps)
+
+    spike_ctx = _ctx(hedge_ratio=0.80, target=0.80, volatility=0.36, drawdown=-0.09)
+    out = node({"cycle_id": "cyc-mon-node", "hedge_context": spike_ctx})
+
+    assert out["reassessment_decision"].outcome.value == "INCREASE"
+    result = out["reassessment_result"]
+    # nothing was trimmed/closed for an INCREASE
+    assert result["changed_position"] is False
+    assert MonitoringRepository(migrated_engine).list_hedge_changes("cyc-mon-node") == []
+
+    reopen = result.get("reopen")
+    assert reopen is not None, "INCREASE must dispatch the STRATEGY_EVALUATION reopen cycle"
+    assert reopen["visited"][0] == "STRATEGY_EVALUATION"
+    assert "INITIAL" not in reopen["visited"] and "ANALYZING" not in reopen["visited"]
+
+    # the nested reopen cycle's own terminal MONITORING must not duplicate the
+    # parent's monitoring_state / monitoring_events for this same cycle_id
+    repo = MonitoringRepository(migrated_engine)
+    fired_trigger_types = {t.value for t in out["monitoring_state"].active_triggers}
+    events = repo.list_events("cyc-mon-node")
+    assert {e.trigger_type for e in events} == fired_trigger_types
+    assert len(events) == len(fired_trigger_types), (
+        "each trigger should be recorded once, not once per nested MONITORING pass"
+    )
+
+
 def test_reassessment_origin_does_not_escalate_again(migrated_engine) -> None:
     node = monitoring_node(_deps(migrated_engine))
 

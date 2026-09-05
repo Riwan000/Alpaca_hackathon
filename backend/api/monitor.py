@@ -1,16 +1,21 @@
 """Monitoring tick — task P7-BE-9 (BRD §24, §37 Scene 8).
 
-* ``POST /monitor`` — run the Level-1 deterministic checks once against the
-  current hedge context and report the fired triggers (or none), plus whether
-  they clear the Level-1 → Level-2 escalation gate. When an engine is wired the
-  tick also persists its ``monitoring_events`` / ``monitoring_state`` rows, so
-  ``GET /monitoring/events`` and the frontend panel reflect it immediately.
+* ``POST /monitor`` — run the Level-1 deterministic checks against the current
+  hedge context and, on a fired trigger that clears the Level-1 → Level-2
+  escalation gate, dispatch the same reassessment + apply-change (and, for an
+  ``INCREASE`` / re-opened ``REPLACE``, the fresh ``STRATEGY_EVALUATION``
+  re-entry) that a full orchestrator cycle's ``MONITORING`` node runs — this tick
+  *is* what closes the adaptive loop outside of a full cycle. When an engine is
+  wired the tick also persists its ``monitoring_events`` / ``monitoring_state`` /
+  ``reassessment_events`` rows, so the read-back endpoints and the frontend panel
+  reflect it immediately.
 
 * :class:`MonitorScheduler` — a tiny in-process periodic runner. The demo
   registers one job (:func:`install_demo_monitor_tick`) that fires the tick on an
-  interval so the "market stabilizes → hedge reduced" story plays hands-off; it
-  is **not** started inside :func:`backend.api.app.create_app` (no background
-  threads in tests) — an entrypoint calls :meth:`MonitorScheduler.start`.
+  interval so the "market stabilizes → hedge reduced" (and "hedge drifted →
+  protection re-added") story plays hands-off; it is **not** started inside
+  :func:`backend.api.app.create_app` (no background threads in tests) — an
+  entrypoint calls :meth:`MonitorScheduler.start`.
 """
 
 from __future__ import annotations
@@ -20,7 +25,7 @@ import datetime as _dt
 import logging
 import threading
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -30,6 +35,9 @@ from backend.agents.monitoring.reassessment import should_escalate
 from backend.api.readback import get_readback_engine
 from backend.models.hedge_context import HedgeContext
 
+if TYPE_CHECKING:
+    from backend.agents.orchestrator.nodes import OrchestratorDeps
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["monitoring"])
@@ -38,6 +46,7 @@ __all__ = [
     "MonitorJob",
     "MonitorScheduler",
     "get_monitor_context",
+    "get_monitor_deps_factory",
     "get_monitor_scheduler",
     "install_demo_monitor_tick",
     "router",
@@ -71,6 +80,11 @@ class MonitorTickOut(BaseModel):
     bypassed_cooldown: bool = False
     escalation_reason: str = ""
     persisted: bool = False
+    #: Set when ``escalate`` dispatched a Level-2 reassessment: outcome,
+    #: rationale, whether a position changed, and — for INCREASE / a re-opened
+    #: REPLACE — the ``reopen`` sub-result from the fresh STRATEGY_EVALUATION
+    #: pass. ``None`` when nothing fired or the dispatch itself errored.
+    reassessment: dict[str, Any] | None = None
     note: str | None = None
 
 
@@ -110,6 +124,39 @@ def get_monitor_context() -> MonitorContextProvider:
 
 
 # --------------------------------------------------------------------------- #
+# Level-2 dispatch deps (overridable in tests)
+# --------------------------------------------------------------------------- #
+
+MonitorDepsFactory = Callable[["Engine"], "OrchestratorDeps"]
+
+
+def _default_monitor_deps(engine: Engine) -> "OrchestratorDeps":
+    """Live deps for the tick's Level-2 dispatch: the readback engine, no broker.
+
+    Deliberately different from ``get_orchestrator_deps`` in
+    ``backend.api.workflow`` (which wires a live ``AlpacaClient`` for the
+    explicitly human-triggered ``POST /run-cycle``): this tick can also fire off
+    an unattended timer (:func:`install_demo_monitor_tick`), and a recurring
+    background job silently submitting live orders is not a call to make by
+    default. ``broker=None`` still runs the decision + risk gate all the way —
+    ``apply_change`` / ``EXECUTION`` just return the gated plan unsubmitted (task
+    P7-BE-9) — so the tick answers *what the agent would do*, and submission
+    stays an explicit, human-triggered step. No ``llm_client`` either — the
+    Reassessment / Strategy agents fall back to their deterministic heuristics.
+    """
+    from backend.agents.orchestrator.nodes import OrchestratorDeps
+
+    return OrchestratorDeps(engine=engine)
+
+
+def get_monitor_deps_factory() -> MonitorDepsFactory:
+    """FastAPI dependency — builds the :class:`OrchestratorDeps` a tick's Level-2
+    dispatch runs against. Overridden in tests to inject a fake LLM client /
+    broker for a deterministic outcome."""
+    return _default_monitor_deps
+
+
+# --------------------------------------------------------------------------- #
 # POST /monitor
 # --------------------------------------------------------------------------- #
 
@@ -119,8 +166,19 @@ def monitor_tick(
     payload: MonitorTickIn = MonitorTickIn(),
     engine: Engine = Depends(get_readback_engine),
     context_provider: MonitorContextProvider = Depends(get_monitor_context),
+    deps_factory: MonitorDepsFactory = Depends(get_monitor_deps_factory),
 ) -> MonitorTickOut:
-    """Run Level-1 checks once and report the fired triggers (task P7-BE-9)."""
+    """Run Level-1 checks and dispatch Level 2 on a fired, escalating trigger
+    (task P7-BE-9).
+
+    Delegates to :func:`~backend.agents.orchestrator.nodes.monitoring_node` — the
+    same ``MONITORING`` node body a full orchestrator cycle runs — so a manual or
+    scheduled tick closes the adaptive loop exactly like a cycle would: a
+    de-risking outcome goes through :func:`~backend.agents.monitoring.apply_change.apply_change`,
+    and an ``INCREASE`` (or a re-opened ``REPLACE``) goes through a fresh
+    ``STRATEGY_EVALUATION -> RISK_CHECK -> EXECUTION`` pass instead of sitting as
+    an unactioned alert.
+    """
     now = _dt.datetime.now(_dt.timezone.utc)
     ctx = context_provider(payload.cycle_id)
     if ctx is None:
@@ -130,19 +188,21 @@ def monitor_tick(
             note="no hedge context available (missing market data / credentials)",
         )
 
-    repo, persisted = _monitoring_repo(engine)
+    _, persisted = _monitoring_repo(engine)
     try:
-        from backend.agents.monitoring.agent import MonitoringAgent
+        from backend.agents.orchestrator.nodes import monitoring_node
 
-        agent = MonitoringAgent(repo=repo) if persisted else MonitoringAgent()
-        state = agent.evaluate(ctx)
+        deps = deps_factory(engine)
+        out = monitoring_node(deps)({"cycle_id": ctx.cycle_id, "hedge_context": ctx})
+        state = out["monitoring_state"]
     except Exception:  # noqa: BLE001 - Level-1 must not 500 the tick
-        logger.exception("POST /monitor: Level-1 evaluation failed")
+        logger.exception("POST /monitor: monitoring node failed")
         return MonitorTickOut(
             cycle_id=ctx.cycle_id, as_of=now, note="Level-1 checks unavailable"
         )
 
     esc = should_escalate(state)
+    notes = out.get("notes") or []
     return MonitorTickOut(
         cycle_id=ctx.cycle_id,
         as_of=state.as_of,
@@ -162,6 +222,8 @@ def monitor_tick(
         bypassed_cooldown=esc.bypassed_cooldown,
         escalation_reason=esc.reason,
         persisted=persisted,
+        reassessment=out.get("reassessment_result"),
+        note="; ".join(notes) or None,
     )
 
 
