@@ -211,9 +211,23 @@ class OrchestratorDeps:
     skip_monitoring_persist: bool = False
 
 
-def _default_inputs_provider(_cycle_id: str | None) -> "AnalysisInputs":
-    """Live inputs bundle — the cycle id is aligned by :func:`analyzing_node`."""
-    return build_live_analysis_inputs()
+def _default_inputs_provider(
+    engine: "Engine | None",
+) -> Callable[[str | None], "AnalysisInputs"]:
+    """Build the default live-inputs provider, bound to ``deps.engine``.
+
+    The cycle id is aligned by :func:`analyzing_node`, not here — the returned
+    callable ignores it, same as before. ``engine`` is threaded through to
+    :func:`~backend.agents.ingest.build_live_analysis_inputs` so ``current_hedge``
+    reflects real order history (:func:`~backend.agents.ingest.reconstruct_current_hedge`)
+    on a full orchestrator cycle exactly like ``POST /analyze`` / ``POST /monitor``
+    already do; ``engine=None`` keeps today's empty ``current_hedge`` default.
+    """
+
+    def _provide(_cycle_id: str | None) -> "AnalysisInputs":
+        return build_live_analysis_inputs(engine=engine)
+
+    return _provide
 
 
 # --------------------------------------------------------------------------- #
@@ -275,7 +289,7 @@ def analyzing_node(deps: OrchestratorDeps) -> NodeBody:
     hard failure (the inputs provider or context builder raising) leaves no
     context: that is an ``errors`` entry + ``route=MONITORING``, never a crash.
     """
-    provider = deps.inputs_provider or _default_inputs_provider
+    provider = deps.inputs_provider or _default_inputs_provider(deps.engine)
     policy = deps.retry_policy or RetryPolicy()
     if deps.engine is None:
         logger.warning("ANALYZING node built with engine=None; agent_runs will not persist")

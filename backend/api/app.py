@@ -75,7 +75,36 @@ def create_app() -> FastAPI:
     app.include_router(pnl.router)
     app.include_router(decision_trail.router)
     app.include_router(stubs.router)
+    _wire_monitor_scheduler(app)
     return app
+
+
+def _wire_monitor_scheduler(app: FastAPI) -> None:
+    """Start the demo monitor tick on boot, gated by ``Settings.enable_monitor_scheduler``.
+
+    Off by default (task P7-BE-9): the many existing tests build
+    ``TestClient(create_app())`` directly and must not get a background timer
+    thread for free. A deployment opts in by setting
+    ``ENABLE_MONITOR_SCHEDULER=true`` in its environment (Railway's, in this
+    repo's case — ``railway.json`` declares no environment variables itself, so
+    this is set in the Railway service's own env config, not the repo).
+    """
+
+    @app.on_event("startup")
+    def _start_monitor_scheduler() -> None:  # pragma: no cover - exercised via the flag
+        try:
+            from backend.config import get_settings
+
+            if not get_settings().enable_monitor_scheduler:
+                return
+        except Exception:
+            return
+        monitor.install_demo_monitor_tick()
+        monitor.get_monitor_scheduler().start()
+
+    @app.on_event("shutdown")
+    def _stop_monitor_scheduler() -> None:  # pragma: no cover - exercised via the flag
+        monitor.get_monitor_scheduler().stop()
 
 
 # Module-level instance for ``uvicorn backend.api.app:app``.

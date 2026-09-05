@@ -158,3 +158,45 @@ def test_state_cycle_id_wins_over_the_inputs_bundle(mock_llm) -> None:
 
     assert out["hedge_context"].cycle_id == "authoritative-cycle"
     assert out["cycle_id"] == "authoritative-cycle"
+
+
+def test_default_provider_threads_deps_engine_through_for_current_hedge(
+    monkeypatch: pytest.MonkeyPatch, mock_llm
+) -> None:
+    """No ``inputs_provider`` override: the node's default provider is what a
+    real ``/run-cycle`` uses. It must pass ``deps.engine`` through to
+    :func:`~backend.agents.ingest.build_live_analysis_inputs` so a full
+    orchestrator cycle also gets a reconstructed ``current_hedge`` — the same
+    fix already wired into ``POST /analyze`` / ``POST /monitor``. ``engine=None``
+    must keep degrading to the empty default, never crash.
+
+    ``_agent_run_repo`` is stubbed out (it would otherwise try to build a real
+    ``AgentRunRepository`` off the sentinel engine) — same no-persistence shape
+    every other test in this file exercises with ``engine=None``.
+    """
+    monkeypatch.setattr(
+        "backend.agents.orchestrator.nodes._agent_run_repo", lambda _engine: None
+    )
+
+    seen_engines: list[Any] = []
+
+    def _fake_build(*, engine: Any = None, **_kwargs: Any) -> AnalysisInputs:
+        seen_engines.append(engine)
+        payload = _inputs().model_dump(mode="json")
+        payload["current_hedge"] = {"active": engine is not None}
+        return AnalysisInputs.model_validate(payload)
+
+    monkeypatch.setattr(
+        "backend.agents.orchestrator.nodes.build_live_analysis_inputs", _fake_build
+    )
+
+    sentinel_engine = object()
+    with_engine = analyzing_node(OrchestratorDeps(engine=sentinel_engine, llm_client=mock_llm))
+    out_with_engine = _run(with_engine, {"cycle_id": "cyc-with-engine"})
+    assert out_with_engine["hedge_context"].current_hedge.active is True
+
+    without_engine = analyzing_node(OrchestratorDeps(llm_client=mock_llm))
+    out_without_engine = _run(without_engine, {"cycle_id": "cyc-without-engine"})
+    assert out_without_engine["hedge_context"].current_hedge.active is False
+
+    assert seen_engines == [sentinel_engine, None]

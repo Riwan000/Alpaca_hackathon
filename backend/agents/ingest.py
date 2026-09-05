@@ -10,7 +10,10 @@ bundle per cycle, assembled from the integration layer:
 * **news** (best effort) — the Alpaca news feed for the held symbols
   (:mod:`backend.integrations.news`);
 * **option chains** (best effort) — a near-dated put chain for the hedge
-  underlyings (:mod:`backend.integrations.alpaca` options snapshot).
+  underlyings (:mod:`backend.integrations.alpaca` options snapshot);
+* **current hedge** (best effort, only when ``engine`` is passed) — the hedge
+  actually on the book, reconstructed from order history
+  (:func:`reconstruct_current_hedge`) rather than always defaulting to empty.
 
 Only the portfolio fetch is fatal: if Alpaca cannot return the account or the
 positions, :class:`IngestError` is raised and the endpoint answers ``503``.
@@ -26,6 +29,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy.engine import Engine
+
 from backend.agents.context_builder import (
     AnalysisInputs,
     MarketData,
@@ -35,16 +40,26 @@ from backend.agents.context_builder import (
     SymbolBar,
 )
 from backend.config import Settings, get_settings
+from backend.db.orders_repo import OrderRepository
+from backend.db.strategy_repo import (
+    StrategyDecisionRepository,
+    StrategyHypothesisRepository,
+)
 from backend.integrations.alpaca import AlpacaClient, OptionChainClient
 from backend.integrations.market_data import MarketDataClient
 from backend.integrations.news import NewsClient
-from backend.models.common import PortfolioPosition
-from backend.models.enums import AssetClass, OptionRight, OrderSide
-from backend.models.hedge_context import HedgeObjective, PortfolioState
+from backend.models.common import OptionLeg, PortfolioPosition
+from backend.models.enums import AssetClass, HedgeAction, OptionRight, OrderSide, StrategyType
+from backend.models.hedge_context import CurrentHedge, HedgeObjective, PortfolioState
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["IngestError", "build_live_analysis_inputs"]
+__all__ = ["IngestError", "build_live_analysis_inputs", "reconstruct_current_hedge"]
+
+#: ``orders.status`` values that mean the legs are actually held (BRD §22/§28) —
+#: a ``PENDING`` / ``SUBMITTED`` / ``REJECTED`` / ``CANCELLED`` / ``EXPIRED`` order
+#: never reached the book.
+_ON_BOOK_STATUSES = frozenset({"FILLED", "PARTIALLY_FILLED"})
 
 _INDEX_LOOKBACK_DAYS = 30
 _BAR_LOOKBACK_DAYS = 10
@@ -223,19 +238,120 @@ def _option_chains(settings: Settings, underlyings: list[str], now: datetime) ->
     return chains
 
 
+def _leg_from_json(raw: dict[str, Any]) -> OptionLeg | None:
+    """One ``orders.legs`` JSONB entry back into an :class:`OptionLeg`.
+
+    The blob is exactly ``leg.model_dump(mode="json")`` written by
+    :func:`backend.agents.execution.result.persist_execution_result` — a bad or
+    unexpected shape just drops the leg (best effort, BRD §31) rather than
+    failing the whole reconstruction.
+    """
+    try:
+        return OptionLeg.model_validate(raw)
+    except Exception:  # noqa: BLE001 - one malformed leg must not sink the hedge
+        logger.warning("current-hedge reconstruction: unreadable leg %r", raw, exc_info=True)
+        return None
+
+
+def _hedge_from_cycle(
+    engine: Engine,
+    decision: Any,
+    book_orders: list[Any],
+) -> CurrentHedge:
+    """Build the active :class:`CurrentHedge` for one cycle's on-book orders."""
+    legs: list[OptionLeg] = []
+    cost_basis = 0.0
+    orders_repo = OrderRepository(engine)
+    for order in book_orders:
+        for raw_leg in order.legs or []:
+            leg = _leg_from_json(raw_leg)
+            if leg is not None:
+                legs.append(leg)
+        if order.id is not None:
+            for fill in orders_repo.fills_for(order.id):
+                cost_basis += float(fill.price) * float(fill.qty)
+
+    if not legs:
+        return CurrentHedge()
+
+    strategy_type: StrategyType | None = None
+    if decision.selected_hypothesis_id is not None:
+        hyp = StrategyHypothesisRepository(engine).get(decision.selected_hypothesis_id)
+        if hyp is not None:
+            try:
+                strategy_type = StrategyType(hyp.strategy_type)
+            except ValueError:
+                strategy_type = None
+
+    return CurrentHedge(
+        active=True,
+        strategy_type=strategy_type,
+        legs=legs,
+        cost_basis=cost_basis,
+        expiration=min(leg.expiration for leg in legs),
+    )
+
+
+def reconstruct_current_hedge(engine: Engine) -> CurrentHedge:
+    """Rebuild the hedge currently on the book from persisted order history.
+
+    ``AnalysisInputs.current_hedge`` otherwise always defaults to empty — nothing
+    populates it from the DB, so the monitor/hedge logic never sees a hedge that
+    genuinely exists. This walks :class:`StrategyDecisionRepository` decisions
+    most-recent-first, skipping cycles that never resulted in an order (a
+    ``MAINTAIN`` / ``NO_TRADE`` cycle), and stops at the first cycle that did:
+
+    * a ``REMOVE`` there means the hedge was deliberately closed — empty.
+    * otherwise the cycle's ``FILLED`` / ``PARTIALLY_FILLED`` orders (only those
+      are actually "on the book") are turned into legs, with ``strategy_type``
+      from the decision's ``selected_hypothesis_id`` and ``cost_basis`` summed
+      from the fills.
+
+    Degrades to the safe empty default on any lookup miss, empty history, or
+    error (BRD §31 pattern) — this must never raise into the analysis pass.
+    """
+    try:
+        decisions = StrategyDecisionRepository(engine).list_all_recent_first()
+        orders_repo = OrderRepository(engine)
+        for decision in decisions:
+            orders = orders_repo.list_for_cycle(decision.cycle_id)
+            if not orders:
+                continue  # nothing executed for this decision — keep looking back
+
+            if decision.action == HedgeAction.REMOVE.value:
+                return CurrentHedge()
+
+            book_orders = [o for o in orders if o.status in _ON_BOOK_STATUSES]
+            if not book_orders:
+                return CurrentHedge()
+            return _hedge_from_cycle(engine, decision, book_orders)
+        return CurrentHedge()
+    except Exception:  # noqa: BLE001 - current-hedge reconstruction is best effort
+        logger.warning("current-hedge reconstruction failed; defaulting to empty", exc_info=True)
+        return CurrentHedge()
+
+
 def build_live_analysis_inputs(
     *,
     settings: Settings | None = None,
     cycle_id: str | None = None,
     now: datetime | None = None,
+    engine: Engine | None = None,
 ) -> AnalysisInputs:
-    """Assemble one cycle's :class:`AnalysisInputs` from the live integrations."""
+    """Assemble one cycle's :class:`AnalysisInputs` from the live integrations.
+
+    ``engine`` is optional and defaults to ``None`` — every existing caller that
+    omits it keeps today's behavior (an empty ``current_hedge``). When given, the
+    hedge actually on the book is reconstructed from order history
+    (:func:`reconstruct_current_hedge`, best effort, BRD §31).
+    """
     cfg = settings or get_settings()
     ts = now or datetime.now(timezone.utc)
     cid = cycle_id or f"cyc-{uuid.uuid4().hex[:12]}"
 
     portfolio = _portfolio_state(cfg)
     held = sorted({p.symbol for p in portfolio.positions})
+    current_hedge = reconstruct_current_hedge(engine) if engine is not None else CurrentHedge()
 
     return AnalysisInputs(
         cycle_id=cid,
@@ -245,6 +361,7 @@ def build_live_analysis_inputs(
             drawdown_tolerance_pct=cfg.drawdown_trigger_pct,
         ),
         portfolio_state=portfolio,
+        current_hedge=current_hedge,
         market_data=_market_data(cfg, held, ts),
         news_feed=_news_feed(cfg, held),
         option_chains=_option_chains(cfg, held, ts),
