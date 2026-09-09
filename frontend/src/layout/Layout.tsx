@@ -27,7 +27,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <span className="font-serif text-xl font-bold tracking-tight text-[var(--text-main)]">
                   AEGIS // PRIVATE WEALTH
                 </span>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 border border-[var(--brand-teal)] text-[var(--brand-teal)] bg-[var(--brand-teal)]/10 flex items-center gap-1.5 font-semibold">
+                <span
+                  data-testid="alpaca-paper-status"
+                  className="text-[10px] font-mono uppercase px-2 py-0.5 border border-[var(--brand-teal)] text-[var(--brand-teal)] bg-[var(--brand-teal)]/10 flex items-center gap-1.5 font-semibold"
+                >
                   <span className="w-1.5 h-1.5 bg-[var(--brand-teal)] animate-pulse inline-block" />
                   Alpaca Paper Active
                 </span>

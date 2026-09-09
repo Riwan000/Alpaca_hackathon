@@ -15,6 +15,7 @@
 import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from './client';
 import type {
+  AlpacaAccount,
   HedgeContext,
   PortfolioState,
   StrategyDecision,
@@ -33,6 +34,7 @@ export const queryKeys = {
   health: ['health'] as const,
   context: ['context'] as const,
   portfolioLatest: ['portfolio', 'latest'] as const,
+  alpacaAccount: (accountId?: string) => ['alpaca', 'account', accountId ?? 'default'] as const,
   agentRuns: (cycleId?: string) => ['agentRuns', cycleId ?? 'all'] as const,
   strategy: (cycleId?: string) => ['strategy', cycleId ?? 'latest'] as const,
   strategyHypotheses: (cycleId?: string) => ['strategy', 'hypotheses', cycleId ?? 'latest'] as const,
@@ -70,6 +72,21 @@ export function usePortfolioLatest(
         return ctx.portfolio_state;
       }
     },
+    ...options,
+  });
+}
+
+export function useAlpacaAccount(
+  accountId?: string,
+  options?: Partial<UseQueryOptions<AlpacaAccount, Error>>
+) {
+  return useQuery<AlpacaAccount, Error>({
+    queryKey: queryKeys.alpacaAccount(accountId),
+    queryFn: () =>
+      apiClient.get<AlpacaAccount>(
+        accountId ? `/alpaca/account?account_id=${encodeURIComponent(accountId)}` : '/alpaca/account'
+      ),
+    refetchInterval: 5000,
     ...options,
   });
 }

@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend import __version__
 from backend.api import (
+    alpaca,
     analyze,
     debug,
     decision_trail,
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(monitor.router)
     app.include_router(pnl.router)
     app.include_router(decision_trail.router)
+    app.include_router(alpaca.router)
     app.include_router(stubs.router)
     _wire_monitor_scheduler(app)
     return app

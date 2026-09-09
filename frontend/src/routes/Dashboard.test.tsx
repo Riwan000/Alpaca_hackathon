@@ -125,4 +125,58 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
     const targetHedgeVal = await screen.findByTestId('target-hedge-value');
     expect(targetHedgeVal).toHaveTextContent('30.0%');
   });
+
+  it('displays Alpaca account balance, cash, buying power, and badge when account_id query param is provided', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?account_id=PA3C0P4T6AJE']}>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    // Alpaca Account Bar
+    expect(await screen.findByTestId('alpaca-account-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('dashboard-account-id')).toHaveTextContent('PA3C0P4T6AJE');
+    expect(await screen.findByTestId('alpaca-live-balance')).toHaveTextContent('$99,607.64');
+    expect(await screen.findByTestId('alpaca-live-cash')).toHaveTextContent('$84,019.09');
+    expect(await screen.findByTestId('alpaca-live-bp')).toHaveTextContent('$379,724');
+
+    // Switch to Execution tab and check PortfolioOverview shows the Alpaca badge
+    fireEvent.click(screen.getByTestId('tab-execution'));
+    expect(await screen.findByTestId('alpaca-account-badge')).toHaveTextContent('PA3C0P4T6AJE');
+  });
+
+  it('allows switching Alpaca account ID dynamically via inline switcher or quick load', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    // Initially quick load button is available
+    const quickLoadBtn = screen.getByTestId('quick-load-btn');
+    expect(quickLoadBtn).toBeInTheDocument();
+
+    // Click quick load
+    fireEvent.click(quickLoadBtn);
+
+    // Alpaca balance becomes visible
+    expect(await screen.findByTestId('alpaca-live-balance')).toHaveTextContent('$99,607.64');
+
+    // Inline switcher allows changing ID
+    const switchBtn = screen.getByTestId('switch-account-btn');
+    fireEvent.click(switchBtn);
+
+    const input = screen.getByTestId('input-account-id-inline');
+    expect(input).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'b78de2d5-d310-478f-a038-66f08a62b6c1' } });
+    fireEvent.click(screen.getByTestId('submit-account-id-btn'));
+
+    expect(await screen.findByTestId('alpaca-live-balance')).toHaveTextContent('$99,607.64');
+  });
 });
+

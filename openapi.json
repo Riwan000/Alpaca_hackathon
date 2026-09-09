@@ -88,6 +88,83 @@
         "title": "AgentRunOut",
         "type": "object"
       },
+      "AlpacaAccountOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_number": {
+            "title": "Account Number",
+            "type": "string"
+          },
+          "buying_power": {
+            "title": "Buying Power",
+            "type": "number"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          },
+          "last_equity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Equity"
+          },
+          "long_market_value": {
+            "title": "Long Market Value",
+            "type": "number"
+          },
+          "portfolio_value": {
+            "title": "Portfolio Value",
+            "type": "number"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PositionOut"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "short_market_value": {
+            "title": "Short Market Value",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_number",
+          "status",
+          "currency",
+          "portfolio_value",
+          "cash",
+          "equity",
+          "buying_power",
+          "long_market_value",
+          "short_market_value",
+          "positions"
+        ],
+        "title": "AlpacaAccountOut",
+        "type": "object"
+      },
       "AnalysisContextNode": {
         "properties": {
           "beta": {
@@ -3604,6 +3681,49 @@
         "title": "StrategyType",
         "type": "string"
       },
+      "SyncAlpacaOut": {
+        "properties": {
+          "buying_power": {
+            "title": "Buying Power",
+            "type": "number"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "number"
+          },
+          "cycle_id": {
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          },
+          "positions_count": {
+            "title": "Positions Count",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "integer"
+          },
+          "total_value": {
+            "title": "Total Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "cycle_id",
+          "total_value",
+          "cash",
+          "equity",
+          "buying_power",
+          "positions_count"
+        ],
+        "title": "SyncAlpacaOut",
+        "type": "object"
+      },
       "TriggerNode": {
         "properties": {
           "monitoring_events": {
@@ -3968,6 +4088,58 @@
         "summary": "Agent Runs",
         "tags": [
           "readback"
+        ]
+      }
+    },
+    "/alpaca/account": {
+      "get": {
+        "description": "Fetch live Alpaca dashboard account balance and active holdings.",
+        "operationId": "get_alpaca_account_alpaca_account_get",
+        "parameters": [
+          {
+            "description": "Alpaca account ID (UUID) or account number (e.g. PA3...)",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Alpaca account ID (UUID) or account number (e.g. PA3...)",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlpacaAccountOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Alpaca Account",
+        "tags": [
+          "alpaca"
         ]
       }
     },
@@ -4616,6 +4788,28 @@
         "summary": "Portfolio Latest",
         "tags": [
           "readback"
+        ]
+      }
+    },
+    "/portfolio/sync-alpaca": {
+      "post": {
+        "description": "Read live Alpaca account state and record a snapshot into the database.",
+        "operationId": "sync_alpaca_to_portfolio_portfolio_sync_alpaca_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncAlpacaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sync Alpaca To Portfolio",
+        "tags": [
+          "alpaca"
         ]
       }
     },

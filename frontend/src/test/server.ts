@@ -1,6 +1,7 @@
 import { setupServer } from 'msw/node';
 import { HttpResponse, http } from 'msw';
 import type {
+  AlpacaAccount,
   HedgeContext,
   StrategyHypothesis,
   StrategyDecision,
@@ -571,9 +572,75 @@ export const STUB_HEALTH: HealthResponse = {
   },
 };
 
+export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
+  account_id: 'b78de2d5-d310-478f-a038-66f08a62b6c1',
+  account_number: 'PA3C0P4T6AJE',
+  status: 'ACTIVE',
+  currency: 'USD',
+  portfolio_value: 99607.64,
+  cash: 84019.09,
+  equity: 99607.64,
+  buying_power: 379724.3,
+  long_market_value: 15588.55,
+  short_market_value: 0.0,
+  last_equity: 99923.04,
+  positions: [
+    {
+      symbol: 'AAPL',
+      qty: 10,
+      avg_price: 319.79,
+      market_value: 3170.5,
+      asset_class: 'EQUITY',
+      side: 'BUY',
+      unrealized_pl: -27.4,
+    },
+    {
+      symbol: 'AP',
+      qty: 1000,
+      avg_price: 8.76,
+      market_value: 8450.0,
+      asset_class: 'EQUITY',
+      side: 'BUY',
+      unrealized_pl: -310.0,
+    },
+    {
+      symbol: 'MSFT',
+      qty: 5,
+      avg_price: 495.0,
+      market_value: 2460.05,
+      asset_class: 'EQUITY',
+      side: 'BUY',
+      unrealized_pl: -14.95,
+    },
+    {
+      symbol: 'OPBK',
+      qty: 100,
+      avg_price: 15.48,
+      market_value: 1508.0,
+      asset_class: 'EQUITY',
+      side: 'BUY',
+      unrealized_pl: -40.0,
+    },
+  ],
+};
+
 export const handlers = [
   http.get('*/health', () => {
     return HttpResponse.json(STUB_HEALTH);
+  }),
+  http.get('*/alpaca/account', ({ request }) => {
+    const url = new URL(request.url);
+    const accountId = url.searchParams.get('account_id');
+    if (!accountId) {
+      return new HttpResponse(JSON.stringify({ detail: 'No account ID provided' }), { status: 404 });
+    }
+    if (
+      accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_id.toLowerCase() &&
+      accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_number.toLowerCase()
+    ) {
+      return new HttpResponse(JSON.stringify({ detail: 'Account not found' }), { status: 404 });
+    }
+    return HttpResponse.json(STUB_ALPACA_ACCOUNT);
   }),
   http.get('*/context', () => {
     return HttpResponse.json(STUB_HEDGE_CONTEXT);

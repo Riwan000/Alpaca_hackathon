@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RefreshCw, ArrowUpRight, AlertCircle, BookOpen } from 'lucide-react';
 import {
   useHedgeContext,
@@ -8,6 +8,7 @@ import {
   useAgentRuns,
   useMonitoringState,
   usePortfolioLatest,
+  useAlpacaAccount,
   useWorkflowState,
   useRiskChecks,
   useExecutionResult,
@@ -15,6 +16,7 @@ import {
   usePnlSeries,
   useMonitoringEvents,
 } from '../api/queries';
+import type { PortfolioState } from '../api/types';
 import { PortfolioOverview } from '../components/PortfolioOverview';
 import { RiskOverview } from '../components/RiskOverview';
 import { Recommendation } from '../components/Recommendation';
@@ -36,8 +38,12 @@ import { Tabs, type TabItem } from '../components/Tabs';
 import { getUserConfiguration, type UserConfiguration } from './ConfigurationPage';
 
 export const DashboardPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const providedId = searchParams.get('account_id') || searchParams.get('id') || undefined;
   const [selectedTrade, setSelectedTrade] = useState<TradeItem | null>(null);
   const [userConfig, setUserConfig] = useState<UserConfiguration>(getUserConfiguration);
+  const [inputId, setInputId] = useState<string>('');
+  const [isEditingId, setIsEditingId] = useState<boolean>(false);
 
   useEffect(() => {
     const handleConfigUpdate = () => {
@@ -51,8 +57,10 @@ export const DashboardPage: React.FC = () => {
     };
   }, []);
 
+  const activeId = providedId || (userConfig?.alpacaAccountId?.trim() ? userConfig.alpacaAccountId.trim() : undefined);
   const contextQuery = useHedgeContext();
   const portfolioQuery = usePortfolioLatest();
+  const alpacaAccountQuery = useAlpacaAccount(activeId, { enabled: Boolean(activeId) });
   const strategyQuery = useStrategyDecision();
   // Hypotheses are persisted across every cycle ever run; without a cycle_id filter
   // this returns the full history (e.g. 4 hedge-family hypotheses x N past cycles),
@@ -79,10 +87,32 @@ export const DashboardPage: React.FC = () => {
     contextQuery.error ||
     strategyQuery.error ||
     monitoringQuery.error ||
-    workflowQuery.error;
+    workflowQuery.error ||
+    alpacaAccountQuery.error;
 
   const context = contextQuery.data;
-  const portfolio = portfolioQuery.data || context?.portfolio_state;
+  const alpacaAccount = alpacaAccountQuery.data;
+  const rawPortfolio = portfolioQuery.data || context?.portfolio_state;
+
+  // Live Alpaca balance & positions take priority for the provided ID
+  const portfolio: PortfolioState | undefined = alpacaAccount
+    ? {
+        total_value: alpacaAccount.portfolio_value,
+        cash: alpacaAccount.cash,
+        equity: alpacaAccount.equity,
+        buying_power: alpacaAccount.buying_power,
+        gross_exposure: alpacaAccount.long_market_value,
+        net_exposure: alpacaAccount.long_market_value - alpacaAccount.short_market_value,
+        positions: alpacaAccount.positions,
+        account_id: alpacaAccount.account_id,
+        account_number: alpacaAccount.account_number,
+        drawdown: rawPortfolio?.drawdown,
+        max_drawdown: rawPortfolio?.max_drawdown,
+        volatility: rawPortfolio?.volatility,
+        beta: rawPortfolio?.beta,
+        concentration_hhi: rawPortfolio?.concentration_hhi,
+      }
+    : rawPortfolio;
   const strategy = strategyQuery.data;
   const hypotheses = hypothesesQuery.data || strategy?.alternatives || [];
   const allHypotheses = strategy?.selected_hypothesis
@@ -177,6 +207,7 @@ export const DashboardPage: React.FC = () => {
     // Invalidate and refetch queries to return UI to seed state
     contextQuery.refetch();
     portfolioQuery.refetch();
+    alpacaAccountQuery.refetch();
     strategyQuery.refetch();
     hypothesesQuery.refetch();
     agentRunsQuery.refetch();
@@ -353,8 +384,15 @@ export const DashboardPage: React.FC = () => {
           {/* Portfolio Overview */}
           <PortfolioOverview
             portfolio={portfolio}
-            isLoading={portfolioQuery.isLoading || contextQuery.isLoading}
-            error={portfolioQuery.error || contextQuery.error}
+            accountId={alpacaAccount?.account_id}
+            accountNumber={alpacaAccount?.account_number}
+            accountStatus={alpacaAccount?.status}
+            isLoading={alpacaAccountQuery.isLoading || portfolioQuery.isLoading || contextQuery.isLoading}
+            error={alpacaAccountQuery.error || portfolioQuery.error || contextQuery.error}
+            onRefresh={() => {
+              alpacaAccountQuery.refetch();
+              portfolioQuery.refetch();
+            }}
           />
         </div>
       ),
@@ -391,7 +429,7 @@ export const DashboardPage: React.FC = () => {
           <h1 className="text-2xl font-bold font-serif text-[var(--text-main)]">
             Portfolio Risk & Strategy Dashboard
           </h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className="text-xs text-[var(--text-muted)] font-mono">
               REAL-TIME HEDGE METRICS • CONTINUOUS ADAPTIVE PROTECTION
               {context && ` • CYCLE ${context.cycle_id.toUpperCase()}`}
@@ -401,6 +439,136 @@ export const DashboardPage: React.FC = () => {
                 ? `AUM ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio.total_value)}`
                 : 'AUM unavailable'}
             </span>
+          </div>
+
+          {/* Alpaca Account Bar & ID Switcher */}
+          <div className="flex flex-wrap items-center gap-2 mt-2" data-testid="alpaca-account-bar">
+            <span
+              data-testid="dashboard-account-id"
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[var(--brand-spruce)]/10 text-[var(--brand-spruce)] border border-[var(--brand-spruce)]/30 text-xs font-mono font-bold rounded"
+              title={`Alpaca Account: ${alpacaAccount?.account_number || activeId || 'Default'}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-teal)] animate-pulse" />
+              ALPACA: {alpacaAccount?.account_number || activeId || 'PA3C0P4T6AJE'}
+            </span>
+
+            {alpacaAccount && (
+              <span
+                data-testid="alpaca-live-balance"
+                className="px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-main)] border border-[var(--border-color)] text-xs font-mono font-bold rounded"
+              >
+                Balance: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(alpacaAccount.portfolio_value)}
+              </span>
+            )}
+
+            {alpacaAccount && (
+              <span
+                data-testid="alpaca-live-cash"
+                className="px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-muted)] border border-[var(--border-color)] text-xs font-mono rounded"
+              >
+                Cash: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(alpacaAccount.cash)}
+              </span>
+            )}
+
+            {alpacaAccount?.buying_power !== undefined && (
+              <span
+                data-testid="alpaca-live-bp"
+                className="hidden md:inline-block px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--brand-spruce)] border border-[var(--border-color)] text-xs font-mono rounded"
+              >
+                BP: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(alpacaAccount.buying_power)}
+              </span>
+            )}
+
+            {(alpacaAccount?.account_id || activeId) && (
+              <span
+                data-testid="alpaca-uuid-badge"
+                className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded truncate max-w-[160px]"
+                title={alpacaAccount?.account_id || activeId}
+              >
+                ID: {alpacaAccount?.account_id || activeId}
+              </span>
+            )}
+
+            {alpacaAccount?.status && (
+              <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-[var(--status-safe)]/10 text-[var(--status-safe)] border border-[var(--status-safe)]/30 rounded uppercase">
+                {alpacaAccount.status}
+              </span>
+            )}
+
+            {isEditingId ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (inputId.trim()) {
+                    setSearchParams({ account_id: inputId.trim() });
+                  } else {
+                    setSearchParams({});
+                  }
+                  setIsEditingId(false);
+                }}
+                className="flex items-center gap-1"
+              >
+                <input
+                  type="text"
+                  value={inputId}
+                  onChange={(e) => setInputId(e.target.value)}
+                  placeholder="Enter Account ID / Number"
+                  className="px-2 py-0.5 text-xs font-mono bg-[var(--bg-card)] border border-[var(--brand-spruce)] rounded text-[var(--text-main)] w-48 focus:outline-none"
+                  autoFocus
+                  data-testid="input-account-id-inline"
+                />
+                <button
+                  type="submit"
+                  data-testid="submit-account-id-btn"
+                  className="px-2 py-0.5 text-xs font-mono bg-[var(--brand-spruce)] text-white rounded hover:bg-[#143225]"
+                >
+                  Set
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingId(false)}
+                  className="px-2 py-0.5 text-xs font-mono text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                data-testid="switch-account-btn"
+                onClick={() => {
+                  setInputId(providedId || alpacaAccount?.account_number || '');
+                  setIsEditingId(true);
+                }}
+                className="text-[11px] font-mono text-[var(--brand-teal)] hover:underline ml-1"
+              >
+                {activeId ? '[Change ID]' : '[Provide ID]'}
+              </button>
+            )}
+
+            {!activeId && !isEditingId && (
+              <button
+                type="button"
+                data-testid="quick-load-btn"
+                onClick={() => setSearchParams({ account_id: 'PA3C0P4T6AJE' })}
+                className="text-[11px] font-mono text-[var(--text-muted)] hover:text-[var(--brand-teal)] hover:underline"
+                title="Load default paper account PA3C0P4T6AJE"
+              >
+                [Load PA3C0P4T6AJE]
+              </button>
+            )}
+
+            {providedId && (
+              <button
+                type="button"
+                data-testid="clear-account-btn"
+                onClick={() => setSearchParams({})}
+                className="text-[11px] font-mono text-[var(--text-muted)] hover:text-[var(--status-danger)]"
+                title="Reset to default view"
+              >
+                [Reset]
+              </button>
+            )}
           </div>
           {/* Telemetry metadata */}
           <div className="sr-only">

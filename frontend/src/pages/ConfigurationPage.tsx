@@ -5,6 +5,7 @@ import { useHedgeContext } from '../api/queries';
 export const CONFIG_STORAGE_KEY = 'aegis_user_configuration';
 
 export interface UserConfiguration {
+  alpacaAccountId?: string;
   drawdownTolerance: number;
   targetHedgeRatio: number;
   maxBudget: number;
@@ -18,6 +19,7 @@ export interface UserConfiguration {
 }
 
 export const DEFAULT_CONFIG: UserConfiguration = {
+  alpacaAccountId: '',
   drawdownTolerance: 10,
   targetHedgeRatio: 20,
   maxBudget: 5,
@@ -266,6 +268,23 @@ export const ConfigurationPage: React.FC = () => {
           </div>
 
           <div className="space-y-3 text-xs">
+            <div>
+              <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-1">
+                Alpaca Account ID / Number (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. PA3C0P4T6AJE or b78de2d5-..."
+                value={config.alpacaAccountId || ''}
+                onChange={(e) => setConfig({ ...config, alpacaAccountId: e.target.value.trim() })}
+                className="w-full p-2 border border-[var(--border-color)] bg-[var(--bg-subtle)] rounded font-mono text-xs text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
+                data-testid="input-alpaca-account-id"
+              />
+              <span className="text-[10px] text-[var(--text-muted)] font-mono block mt-0.5">
+                Leave blank to use default account from server credentials.
+              </span>
+            </div>
+
             <div>
               <label className="text-[10px] font-mono uppercase text-[var(--text-muted)] block mb-2">
                 Execution Autonomy Mode

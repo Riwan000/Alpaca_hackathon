@@ -318,6 +318,14 @@ def analyzing_node(deps: OrchestratorDeps) -> NodeBody:
             logger.exception("ANALYZING node could not build a HedgeContext")
             return _failure_payload(WorkflowNode.ANALYZING, exc)
 
+        if deps.engine is not None and ctx.portfolio_state is not None:
+            try:
+                from backend.api.analyze import _persist_snapshot
+
+                _persist_snapshot(deps.engine, ctx)
+            except Exception:  # noqa: BLE001
+                logger.warning("ANALYZING node failed to persist snapshot to DB", exc_info=True)
+
         payload: dict[str, Any] = {"hedge_context": ctx, "cycle_id": ctx.cycle_id}
         if ctx.degraded_sections:
             payload["degraded"] = True

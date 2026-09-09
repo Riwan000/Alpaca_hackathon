@@ -171,7 +171,26 @@ export interface PortfolioPosition {
 // 1. HedgeContext Contract (BRD §14)
 // ============================================================================
 
+export interface AlpacaAccount {
+  account_id: string;
+  account_number: string;
+  status: string;
+  currency: string;
+  portfolio_value: number;
+  cash: number;
+  equity: number;
+  buying_power: number;
+  long_market_value: number;
+  short_market_value: number;
+  last_equity?: number | null;
+  positions: PortfolioPosition[];
+}
+
 export interface PortfolioState {
+  id?: number | string;
+  cycle_id?: string;
+  account_id?: string | null;
+  account_number?: string | null;
   total_value: number;
   cash: number;
   equity: number;

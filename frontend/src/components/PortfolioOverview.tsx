@@ -4,6 +4,9 @@ import type { PortfolioState } from '../api/types';
 
 export interface PortfolioOverviewProps {
   portfolio?: PortfolioState | null;
+  accountId?: string | null;
+  accountNumber?: string | null;
+  accountStatus?: string | null;
   isLoading?: boolean;
   error?: Error | null;
   onRefresh?: () => void;
@@ -12,6 +15,9 @@ export interface PortfolioOverviewProps {
 
 export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   portfolio,
+  accountId,
+  accountNumber,
+  accountStatus,
   isLoading = false,
   error = null,
   onRefresh,
@@ -83,12 +89,29 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-color)] pb-3">
         <div>
-          <h2 className="text-sm font-serif font-bold text-[var(--text-main)] flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-[var(--brand-spruce)]" />
-            Portfolio Holdings & Liquidity
-          </h2>
-          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-serif font-bold text-[var(--text-main)] flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-[var(--brand-spruce)]" />
+              Portfolio Holdings & Liquidity
+            </h2>
+            {(accountNumber || portfolio?.account_number) && (
+              <span
+                data-testid="alpaca-account-badge"
+                className="px-2 py-0.5 bg-[var(--brand-spruce)]/10 text-[var(--brand-spruce)] border border-[var(--brand-spruce)]/30 text-[10px] font-mono font-semibold rounded"
+                title={`Alpaca Account ID: ${accountId || portfolio?.account_id || accountNumber}`}
+              >
+                ACCOUNT: {accountNumber || portfolio?.account_number}
+              </span>
+            )}
+            {accountStatus && (
+              <span className="px-1.5 py-0.5 bg-[var(--status-safe)]/10 text-[var(--status-safe)] border border-[var(--status-safe)]/30 text-[9px] font-mono font-semibold rounded uppercase">
+                {accountStatus}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase block mt-0.5">
             Alpaca Account Summary & Active Positions
+            {(accountId || portfolio?.account_id) && ` • ID: ${accountId || portfolio?.account_id}`}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
