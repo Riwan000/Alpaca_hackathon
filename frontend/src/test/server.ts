@@ -2,6 +2,7 @@ import { setupServer } from 'msw/node';
 import { HttpResponse, http } from 'msw';
 import type {
   AlpacaAccount,
+  AlpacaHistoryResponse,
   HedgeContext,
   StrategyHypothesis,
   StrategyDecision,
