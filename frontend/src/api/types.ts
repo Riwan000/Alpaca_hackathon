@@ -165,6 +165,11 @@ export interface PortfolioPosition {
   asset_class?: AssetClass;
   side?: OrderSide;
   unrealized_pl?: number | null;
+  unrealized_plpc?: number | null;
+  unrealized_intraday_pl?: number | null;
+  cost_basis?: number | null;
+  current_price?: number | null;
+  change_today?: number | null;
 }
 
 // ============================================================================
@@ -183,7 +188,36 @@ export interface AlpacaAccount {
   long_market_value: number;
   short_market_value: number;
   last_equity?: number | null;
+  day_pnl?: number;
+  day_pnl_pct?: number;
+  total_unrealized_pl?: number;
+  total_cost_basis?: number;
+  initial_margin?: number;
+  maintenance_margin?: number;
+  regt_buying_power?: number;
+  options_buying_power?: number;
+  sma?: number;
+  multiplier?: string;
+  positions_count?: number;
+  drawdown?: number;
   positions: PortfolioPosition[];
+}
+
+export interface AlpacaHistoryPoint {
+  ts: string;
+  equity: number;
+  portfolio_pnl: number;
+  net_pnl: number;
+  benchmark_pnl: number;
+  drawdown: number;
+}
+
+export interface AlpacaHistoryResponse {
+  account_id: string;
+  account_number: string;
+  timeframe: string;
+  base_value: number;
+  series: AlpacaHistoryPoint[];
 }
 
 export interface PortfolioState {

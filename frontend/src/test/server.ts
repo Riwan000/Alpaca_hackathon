@@ -584,6 +584,18 @@ export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
   long_market_value: 15588.55,
   short_market_value: 0.0,
   last_equity: 99923.04,
+  day_pnl: -315.4,
+  day_pnl_pct: -0.003157,
+  total_unrealized_pl: -392.35,
+  total_cost_basis: 15980.9,
+  initial_margin: 7796.08,
+  maintenance_margin: 4677.65,
+  regt_buying_power: 183630.35,
+  options_buying_power: 91815.17,
+  sma: 92009.55,
+  multiplier: '4',
+  positions_count: 4,
+  drawdown: -0.003157,
   positions: [
     {
       symbol: 'AAPL',
@@ -592,7 +604,11 @@ export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
       market_value: 3170.5,
       asset_class: 'EQUITY',
       side: 'BUY',
+      cost_basis: 3197.9,
+      current_price: 317.05,
       unrealized_pl: -27.4,
+      unrealized_plpc: -0.0085,
+      change_today: 0.0035,
     },
     {
       symbol: 'AP',
@@ -601,7 +617,11 @@ export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
       market_value: 8450.0,
       asset_class: 'EQUITY',
       side: 'BUY',
+      cost_basis: 8760.0,
+      current_price: 8.45,
       unrealized_pl: -310.0,
+      unrealized_plpc: -0.0354,
+      change_today: -0.0343,
     },
     {
       symbol: 'MSFT',
@@ -610,7 +630,11 @@ export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
       market_value: 2460.05,
       asset_class: 'EQUITY',
       side: 'BUY',
+      cost_basis: 2475.0,
+      current_price: 492.01,
       unrealized_pl: -14.95,
+      unrealized_plpc: -0.006,
+      change_today: -0.0035,
     },
     {
       symbol: 'OPBK',
@@ -619,7 +643,44 @@ export const STUB_ALPACA_ACCOUNT: AlpacaAccount = {
       market_value: 1508.0,
       asset_class: 'EQUITY',
       side: 'BUY',
+      cost_basis: 1548.0,
+      current_price: 15.08,
       unrealized_pl: -40.0,
+      unrealized_plpc: -0.0258,
+      change_today: -0.0092,
+    },
+  ],
+};
+
+export const STUB_ALPACA_HISTORY: AlpacaHistoryResponse = {
+  account_id: 'b78de2d5-d310-478f-a038-66f08a62b6c1',
+  account_number: 'PA3C0P4T6AJE',
+  timeframe: '1H',
+  base_value: 100000.0,
+  series: [
+    {
+      ts: '2026-09-08T10:00:00Z',
+      equity: 100000.0,
+      portfolio_pnl: 0.0,
+      net_pnl: 0.0,
+      benchmark_pnl: 0.0,
+      drawdown: 0.0,
+    },
+    {
+      ts: '2026-09-08T12:00:00Z',
+      equity: 99923.04,
+      portfolio_pnl: -76.96,
+      net_pnl: -76.96,
+      benchmark_pnl: -76.96,
+      drawdown: -0.00077,
+    },
+    {
+      ts: '2026-09-08T16:00:00Z',
+      equity: 99607.64,
+      portfolio_pnl: -392.36,
+      net_pnl: -392.36,
+      benchmark_pnl: -392.36,
+      drawdown: -0.00392,
     },
   ],
 };
@@ -641,6 +702,20 @@ export const handlers = [
       return new HttpResponse(JSON.stringify({ detail: 'Account not found' }), { status: 404 });
     }
     return HttpResponse.json(STUB_ALPACA_ACCOUNT);
+  }),
+  http.get('*/alpaca/history', ({ request }) => {
+    const url = new URL(request.url);
+    const accountId = url.searchParams.get('account_id');
+    if (!accountId) {
+      return new HttpResponse(JSON.stringify({ detail: 'No account ID provided' }), { status: 404 });
+    }
+    if (
+      accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_id.toLowerCase() &&
+      accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_number.toLowerCase()
+    ) {
+      return new HttpResponse(JSON.stringify({ detail: 'Account not found' }), { status: 404 });
+    }
+    return HttpResponse.json(STUB_ALPACA_HISTORY);
   }),
   http.get('*/context', () => {
     return HttpResponse.json(STUB_HEDGE_CONTEXT);

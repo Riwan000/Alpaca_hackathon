@@ -7,6 +7,8 @@ export interface PortfolioOverviewProps {
   accountId?: string | null;
   accountNumber?: string | null;
   accountStatus?: string | null;
+  dayPnl?: number | null;
+  totalUnrealizedPnl?: number | null;
   isLoading?: boolean;
   error?: Error | null;
   onRefresh?: () => void;
@@ -18,6 +20,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   accountId,
   accountNumber,
   accountStatus,
+  dayPnl,
+  totalUnrealizedPnl,
   isLoading = false,
   error = null,
   onRefresh,
@@ -44,9 +48,10 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           <div className="h-5 w-40 bg-[var(--bg-subtle)] animate-pulse" />
           <div className="h-4 w-24 bg-[var(--bg-subtle)] animate-pulse" />
         </div>
-        <div className="flex items-center justify-center py-12 text-xs font-mono text-[var(--text-muted)] gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin text-[var(--brand-spruce)]" />
-          <span>Synchronizing Portfolio Holdings...</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-16 bg-[var(--bg-subtle)] animate-pulse" />
+          ))}
         </div>
       </div>
     );
@@ -123,7 +128,7 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
       </div>
 
       {/* Summary KPI Ribbon */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <div className="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border-color)]">
           <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase block">Cash Balance</span>
           <span className="text-sm font-mono font-bold text-[var(--text-main)]" data-testid="portfolio-cash">
@@ -148,6 +153,28 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             {formatCurrency(portfolio?.buying_power)}
           </span>
         </div>
+        <div className="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border-color)]">
+          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase block">Today's P&L</span>
+          <span
+            className={`text-sm font-mono font-bold ${
+              (dayPnl ?? 0) >= 0 ? 'text-[var(--status-safe)]' : 'text-[var(--status-danger)]'
+            }`}
+            data-testid="portfolio-day-pnl"
+          >
+            {dayPnl !== undefined && dayPnl !== null ? formatCurrency(dayPnl, true) : '—'}
+          </span>
+        </div>
+        <div className="p-2.5 bg-[var(--bg-subtle)] border border-[var(--border-color)]">
+          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase block">Total P&L</span>
+          <span
+            className={`text-sm font-mono font-bold ${
+              (totalUnrealizedPnl ?? 0) >= 0 ? 'text-[var(--status-safe)]' : 'text-[var(--status-danger)]'
+            }`}
+            data-testid="portfolio-total-pnl"
+          >
+            {totalUnrealizedPnl !== undefined && totalUnrealizedPnl !== null ? formatCurrency(totalUnrealizedPnl, true) : '—'}
+          </span>
+        </div>
       </div>
 
       {/* Holdings Table */}
@@ -168,7 +195,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 <th className="p-2.5">Symbol</th>
                 <th className="p-2.5">Side</th>
                 <th className="p-2.5 text-right">Qty</th>
-                <th className="p-2.5 text-right">Avg Price</th>
+                <th className="p-2.5 text-right">Current Price</th>
+                <th className="p-2.5 text-right">Avg Cost</th>
                 <th className="p-2.5 text-right">Market Value</th>
                 <th className="p-2.5 text-right">Unrealized P&L</th>
               </tr>
@@ -195,6 +223,25 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     <td className="p-2.5 text-right font-bold text-[var(--text-main)]">
                       {pos.qty.toLocaleString()}
                     </td>
+                    <td className="p-2.5 text-right font-mono">
+                      {pos.current_price !== undefined && pos.current_price !== null ? (
+                        <div>
+                          <span className="font-bold text-[var(--text-main)]">${pos.current_price.toFixed(2)}</span>
+                          {pos.change_today !== undefined && pos.change_today !== null && (
+                            <span
+                              className={`block text-[10px] ${
+                                pos.change_today >= 0 ? 'text-[var(--status-safe)]' : 'text-[var(--status-danger)]'
+                              }`}
+                            >
+                              {pos.change_today >= 0 ? '+' : ''}
+                              {(pos.change_today * 100).toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">—</span>
+                      )}
+                    </td>
                     <td className="p-2.5 text-right text-[var(--text-muted)]">
                       ${pos.avg_price.toFixed(2)}
                     </td>
@@ -214,6 +261,16 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                         )}
                         {formatCurrency(pnl, true)}
                       </span>
+                      {pos.unrealized_plpc !== undefined && pos.unrealized_plpc !== null && (
+                        <span
+                          className={`block text-[10px] ${
+                            pos.unrealized_plpc >= 0 ? 'text-[var(--status-safe)]' : 'text-[var(--status-danger)]'
+                          }`}
+                        >
+                          {pos.unrealized_plpc >= 0 ? '+' : ''}
+                          {(pos.unrealized_plpc * 100).toFixed(2)}%
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

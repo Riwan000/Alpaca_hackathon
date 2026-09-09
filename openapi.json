@@ -110,8 +110,28 @@
             "title": "Currency",
             "type": "string"
           },
+          "day_pnl": {
+            "default": 0.0,
+            "title": "Day Pnl",
+            "type": "number"
+          },
+          "day_pnl_pct": {
+            "default": 0.0,
+            "title": "Day Pnl Pct",
+            "type": "number"
+          },
+          "drawdown": {
+            "default": 0.0,
+            "title": "Drawdown",
+            "type": "number"
+          },
           "equity": {
             "title": "Equity",
+            "type": "number"
+          },
+          "initial_margin": {
+            "default": 0.0,
+            "title": "Initial Margin",
             "type": "number"
           },
           "last_equity": {
@@ -129,24 +149,64 @@
             "title": "Long Market Value",
             "type": "number"
           },
+          "maintenance_margin": {
+            "default": 0.0,
+            "title": "Maintenance Margin",
+            "type": "number"
+          },
+          "multiplier": {
+            "default": "1",
+            "title": "Multiplier",
+            "type": "string"
+          },
+          "options_buying_power": {
+            "default": 0.0,
+            "title": "Options Buying Power",
+            "type": "number"
+          },
           "portfolio_value": {
             "title": "Portfolio Value",
             "type": "number"
           },
           "positions": {
             "items": {
-              "$ref": "#/components/schemas/PositionOut"
+              "$ref": "#/components/schemas/AlpacaPositionOut"
             },
             "title": "Positions",
             "type": "array"
+          },
+          "positions_count": {
+            "default": 0,
+            "title": "Positions Count",
+            "type": "integer"
+          },
+          "regt_buying_power": {
+            "default": 0.0,
+            "title": "Regt Buying Power",
+            "type": "number"
           },
           "short_market_value": {
             "title": "Short Market Value",
             "type": "number"
           },
+          "sma": {
+            "default": 0.0,
+            "title": "Sma",
+            "type": "number"
+          },
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "total_cost_basis": {
+            "default": 0.0,
+            "title": "Total Cost Basis",
+            "type": "number"
+          },
+          "total_unrealized_pl": {
+            "default": 0.0,
+            "title": "Total Unrealized Pl",
+            "type": "number"
           }
         },
         "required": [
@@ -163,6 +223,184 @@
           "positions"
         ],
         "title": "AlpacaAccountOut",
+        "type": "object"
+      },
+      "AlpacaHistoryOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_number": {
+            "title": "Account Number",
+            "type": "string"
+          },
+          "base_value": {
+            "title": "Base Value",
+            "type": "number"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AlpacaHistoryPointOut"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "timeframe": {
+            "title": "Timeframe",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_number",
+          "timeframe",
+          "base_value",
+          "series"
+        ],
+        "title": "AlpacaHistoryOut",
+        "type": "object"
+      },
+      "AlpacaHistoryPointOut": {
+        "properties": {
+          "benchmark_pnl": {
+            "title": "Benchmark Pnl",
+            "type": "number"
+          },
+          "drawdown": {
+            "title": "Drawdown",
+            "type": "number"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          },
+          "net_pnl": {
+            "title": "Net Pnl",
+            "type": "number"
+          },
+          "portfolio_pnl": {
+            "title": "Portfolio Pnl",
+            "type": "number"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "equity",
+          "portfolio_pnl",
+          "net_pnl",
+          "benchmark_pnl",
+          "drawdown"
+        ],
+        "title": "AlpacaHistoryPointOut",
+        "type": "object"
+      },
+      "AlpacaPositionOut": {
+        "properties": {
+          "asset_class": {
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "avg_price": {
+            "title": "Avg Price",
+            "type": "number"
+          },
+          "change_today": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Today"
+          },
+          "cost_basis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Basis"
+          },
+          "current_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Price"
+          },
+          "market_value": {
+            "title": "Market Value",
+            "type": "number"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "number"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "unrealized_intraday_pl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Intraday Pl"
+          },
+          "unrealized_pl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pl"
+          },
+          "unrealized_plpc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Plpc"
+          }
+        },
+        "required": [
+          "symbol",
+          "qty",
+          "avg_price",
+          "market_value",
+          "asset_class",
+          "side"
+        ],
+        "title": "AlpacaPositionOut",
         "type": "object"
       },
       "AnalysisContextNode": {
@@ -4138,6 +4376,82 @@
           }
         },
         "summary": "Get Alpaca Account",
+        "tags": [
+          "alpaca"
+        ]
+      }
+    },
+    "/alpaca/history": {
+      "get": {
+        "description": "Fetch live Alpaca portfolio history curve and P&L trajectory.",
+        "operationId": "get_alpaca_history_alpaca_history_get",
+        "parameters": [
+          {
+            "description": "Alpaca account ID (UUID) or account number (e.g. PA3...)",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Alpaca account ID (UUID) or account number (e.g. PA3...)",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Time period (1D, 1W, 1M, 1A, all)",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "1W",
+              "description": "Time period (1D, 1W, 1M, 1A, all)",
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Timeframe (1Min, 5Min, 15Min, 1H, 1D)",
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "default": "1H",
+              "description": "Timeframe (1Min, 5Min, 15Min, 1H, 1D)",
+              "title": "Timeframe",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlpacaHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Alpaca History",
         "tags": [
           "alpaca"
         ]

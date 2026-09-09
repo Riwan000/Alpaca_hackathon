@@ -16,6 +16,7 @@ import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } 
 import { apiClient } from './client';
 import type {
   AlpacaAccount,
+  AlpacaHistoryResponse,
   HedgeContext,
   PortfolioState,
   StrategyDecision,
@@ -35,6 +36,8 @@ export const queryKeys = {
   context: ['context'] as const,
   portfolioLatest: ['portfolio', 'latest'] as const,
   alpacaAccount: (accountId?: string) => ['alpaca', 'account', accountId ?? 'default'] as const,
+  alpacaHistory: (accountId?: string, period?: string, timeframe?: string) =>
+    ['alpaca', 'history', accountId ?? 'default', period ?? '1W', timeframe ?? '1H'] as const,
   agentRuns: (cycleId?: string) => ['agentRuns', cycleId ?? 'all'] as const,
   strategy: (cycleId?: string) => ['strategy', cycleId ?? 'latest'] as const,
   strategyHypotheses: (cycleId?: string) => ['strategy', 'hypotheses', cycleId ?? 'latest'] as const,
@@ -87,6 +90,26 @@ export function useAlpacaAccount(
         accountId ? `/alpaca/account?account_id=${encodeURIComponent(accountId)}` : '/alpaca/account'
       ),
     refetchInterval: 5000,
+    ...options,
+  });
+}
+
+export function useAlpacaHistory(
+  accountId?: string,
+  period: string = '1W',
+  timeframe: string = '1H',
+  options?: Partial<UseQueryOptions<AlpacaHistoryResponse, Error>>
+) {
+  return useQuery<AlpacaHistoryResponse, Error>({
+    queryKey: queryKeys.alpacaHistory(accountId, period, timeframe),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (accountId) params.set('account_id', accountId);
+      params.set('period', period);
+      params.set('timeframe', timeframe);
+      return apiClient.get<AlpacaHistoryResponse>(`/alpaca/history?${params.toString()}`);
+    },
+    refetchInterval: 15000,
     ...options,
   });
 }

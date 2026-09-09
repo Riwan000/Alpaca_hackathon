@@ -181,6 +181,21 @@ class AlpacaClient:
             raise AlpacaError(f"expected an order object, got {type(data).__name__}")
         return data
 
+    def get_portfolio_history(
+        self,
+        period: str = "1W",
+        timeframe: str = "1H",
+    ) -> dict[str, Any]:
+        """Return historical equity and P&L from ``/v2/account/portfolio/history``."""
+        data = self._get(
+            f"/v2/account/portfolio/history?period={period}&timeframe={timeframe}"
+        )
+        if not isinstance(data, dict):
+            raise AlpacaError(
+                f"expected a portfolio history object, got {type(data).__name__}"
+            )
+        return data
+
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
         self._client.close()

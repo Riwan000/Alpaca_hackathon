@@ -135,16 +135,25 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
       </MemoryRouter>
     );
 
-    // Alpaca Account Bar
+    // Alpaca Account Bar with rich metrics
     expect(await screen.findByTestId('alpaca-account-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('dashboard-account-id')).toHaveTextContent('PA3C0P4T6AJE');
     expect(await screen.findByTestId('alpaca-live-balance')).toHaveTextContent('$99,607.64');
+    expect(await screen.findByTestId('alpaca-day-pnl')).toHaveTextContent('Today: -$315.40');
+    expect(await screen.findByTestId('alpaca-unrealized-pnl')).toHaveTextContent('Total P&L: -$392.35');
+    expect(await screen.findByTestId('alpaca-holdings-value')).toHaveTextContent('Holdings: $15,589 (4)');
     expect(await screen.findByTestId('alpaca-live-cash')).toHaveTextContent('$84,019.09');
     expect(await screen.findByTestId('alpaca-live-bp')).toHaveTextContent('$379,724');
 
-    // Switch to Execution tab and check PortfolioOverview shows the Alpaca badge
+    // Performance Panel on Overview tab reflects Alpaca P&L and Trajectory chart
+    expect(await screen.findByTestId('portfolio-pnl-tile')).toHaveTextContent('-$392.35');
+    expect(await screen.findByTestId('hedged-series-line')).toBeInTheDocument();
+
+    // Switch to Execution tab and check PortfolioOverview shows Alpaca badge, KPI ribbon, and holdings table
     fireEvent.click(screen.getByTestId('tab-execution'));
     expect(await screen.findByTestId('alpaca-account-badge')).toHaveTextContent('PA3C0P4T6AJE');
+    expect(await screen.findByTestId('portfolio-day-pnl')).toHaveTextContent('-$315');
+    expect(await screen.findByTestId('holdings-table')).toBeInTheDocument();
   });
 
   it('allows switching Alpaca account ID dynamically via inline switcher or quick load', async () => {
@@ -163,8 +172,9 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
     // Click quick load
     fireEvent.click(quickLoadBtn);
 
-    // Alpaca balance becomes visible
+    // Alpaca balance and metrics become visible
     expect(await screen.findByTestId('alpaca-live-balance')).toHaveTextContent('$99,607.64');
+    expect(await screen.findByTestId('alpaca-day-pnl')).toHaveTextContent('Today: -$315.40');
 
     // Inline switcher allows changing ID
     const switchBtn = screen.getByTestId('switch-account-btn');

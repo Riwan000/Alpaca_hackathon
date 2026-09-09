@@ -9,6 +9,7 @@ import {
   useMonitoringState,
   usePortfolioLatest,
   useAlpacaAccount,
+  useAlpacaHistory,
   useWorkflowState,
   useRiskChecks,
   useExecutionResult,
@@ -27,7 +28,7 @@ import { RiskChecklist } from '../components/RiskChecklist';
 import { OrderStatus } from '../components/OrderStatus';
 import { WorkflowState } from '../components/WorkflowState';
 import { RunCycleButton } from '../components/RunCycleButton';
-import { Performance } from '../components/Performance';
+import { Performance, type PerformanceSnapshot } from '../components/Performance';
 import { MonitoringPanel } from '../components/MonitoringPanel';
 import { HedgeDriftGauge } from '../components/HedgeDriftGauge';
 import { ReassessmentHistory } from '../components/ReassessmentHistory';
@@ -61,6 +62,7 @@ export const DashboardPage: React.FC = () => {
   const contextQuery = useHedgeContext();
   const portfolioQuery = usePortfolioLatest();
   const alpacaAccountQuery = useAlpacaAccount(activeId, { enabled: Boolean(activeId) });
+  const alpacaHistoryQuery = useAlpacaHistory(activeId, '1W', '1H', { enabled: Boolean(activeId) });
   const strategyQuery = useStrategyDecision();
   // Hypotheses are persisted across every cycle ever run; without a cycle_id filter
   // this returns the full history (e.g. 4 hedge-family hypotheses x N past cycles),
@@ -106,13 +108,37 @@ export const DashboardPage: React.FC = () => {
         positions: alpacaAccount.positions,
         account_id: alpacaAccount.account_id,
         account_number: alpacaAccount.account_number,
-        drawdown: rawPortfolio?.drawdown,
+        drawdown: alpacaAccount.drawdown ?? rawPortfolio?.drawdown,
         max_drawdown: rawPortfolio?.max_drawdown,
         volatility: rawPortfolio?.volatility,
         beta: rawPortfolio?.beta,
         concentration_hhi: rawPortfolio?.concentration_hhi,
       }
     : rawPortfolio;
+
+  // Live Alpaca performance metrics feed Performance panel and trajectory chart
+  const performanceCurrent: PerformanceSnapshot | undefined = alpacaAccount
+    ? {
+        portfolio_pnl: alpacaAccount.total_unrealized_pl ?? alpacaAccount.day_pnl ?? 0,
+        hedge_pnl: 0,
+        net_pnl: alpacaAccount.day_pnl ?? alpacaAccount.total_unrealized_pl ?? 0,
+        drawdown: alpacaAccount.drawdown ?? 0,
+        hedge_cost: 0,
+        benchmark_pnl: alpacaAccount.day_pnl ?? 0,
+      }
+    : pnlCurrentQuery.data;
+
+  const performanceSeries =
+    activeId && alpacaHistoryQuery.data?.series && alpacaHistoryQuery.data.series.length > 0
+      ? alpacaHistoryQuery.data.series.map((s, idx) => ({
+          cycle_id: `alpaca-${idx}`,
+          ts: s.ts,
+          portfolio_pnl: s.portfolio_pnl,
+          hedge_pnl: 0,
+          net_pnl: s.net_pnl,
+          benchmark_pnl: s.benchmark_pnl,
+        }))
+      : pnlSeriesQuery.data || [];
   const strategy = strategyQuery.data;
   const hypotheses = hypothesesQuery.data || strategy?.alternatives || [];
   const allHypotheses = strategy?.selected_hypothesis
@@ -243,9 +269,9 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-6">
           {/* P&L and Attribution */}
           <Performance
-            current={pnlCurrentQuery.data}
-            series={pnlSeriesQuery.data || []}
-            isLoading={pnlCurrentQuery.isLoading}
+            current={performanceCurrent}
+            series={performanceSeries}
+            isLoading={alpacaAccount ? alpacaAccountQuery.isLoading : pnlCurrentQuery.isLoading}
           />
 
           {/* Live Workflow Orchestration State */}
@@ -387,10 +413,13 @@ export const DashboardPage: React.FC = () => {
             accountId={alpacaAccount?.account_id}
             accountNumber={alpacaAccount?.account_number}
             accountStatus={alpacaAccount?.status}
+            dayPnl={alpacaAccount?.day_pnl}
+            totalUnrealizedPnl={alpacaAccount?.total_unrealized_pl}
             isLoading={alpacaAccountQuery.isLoading || portfolioQuery.isLoading || contextQuery.isLoading}
             error={alpacaAccountQuery.error || portfolioQuery.error || contextQuery.error}
             onRefresh={() => {
               alpacaAccountQuery.refetch();
+              alpacaHistoryQuery.refetch();
               portfolioQuery.refetch();
             }}
           />
@@ -461,6 +490,48 @@ export const DashboardPage: React.FC = () => {
               </span>
             )}
 
+            {alpacaAccount?.day_pnl !== undefined && (
+              <span
+                data-testid="alpaca-day-pnl"
+                className={`px-2 py-0.5 border text-xs font-mono font-bold rounded ${
+                  alpacaAccount.day_pnl >= 0
+                    ? 'bg-[var(--status-safe)]/10 text-[var(--status-safe)] border-[var(--status-safe)]/30'
+                    : 'bg-[var(--status-danger)]/10 text-[var(--status-danger)] border-[var(--status-danger)]/30'
+                }`}
+                title="Intraday profit/loss change since market open / last close"
+              >
+                Today: {alpacaAccount.day_pnl >= 0 ? '+' : ''}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(alpacaAccount.day_pnl)}
+                {alpacaAccount.day_pnl_pct !== undefined && ` (${(alpacaAccount.day_pnl_pct * 100).toFixed(2)}%)`}
+              </span>
+            )}
+
+            {alpacaAccount?.total_unrealized_pl !== undefined && (
+              <span
+                data-testid="alpaca-unrealized-pnl"
+                className={`px-2 py-0.5 border text-xs font-mono font-bold rounded ${
+                  alpacaAccount.total_unrealized_pl >= 0
+                    ? 'bg-[var(--status-safe)]/10 text-[var(--status-safe)] border-[var(--status-safe)]/30'
+                    : 'bg-[var(--status-danger)]/10 text-[var(--status-danger)] border-[var(--status-danger)]/30'
+                }`}
+                title="Cumulative unrealized profit/loss across all holdings"
+              >
+                Total P&L: {alpacaAccount.total_unrealized_pl >= 0 ? '+' : ''}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(alpacaAccount.total_unrealized_pl)}
+              </span>
+            )}
+
+            {alpacaAccount?.long_market_value !== undefined && (
+              <span
+                data-testid="alpaca-holdings-value"
+                className="px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-main)] border border-[var(--border-color)] text-xs font-mono rounded"
+                title="Long equity market value and active positions count"
+              >
+                Holdings: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(alpacaAccount.long_market_value)}
+                {alpacaAccount.positions_count !== undefined && ` (${alpacaAccount.positions_count})`}
+              </span>
+            )}
+
             {alpacaAccount && (
               <span
                 data-testid="alpaca-live-cash"
@@ -476,6 +547,26 @@ export const DashboardPage: React.FC = () => {
                 className="hidden md:inline-block px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--brand-spruce)] border border-[var(--border-color)] text-xs font-mono rounded"
               >
                 BP: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(alpacaAccount.buying_power)}
+              </span>
+            )}
+
+            {alpacaAccount?.maintenance_margin !== undefined && alpacaAccount.maintenance_margin > 0 && (
+              <span
+                data-testid="alpaca-margin-info"
+                className="hidden lg:inline-block px-2 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-muted)] border border-[var(--border-color)] text-xs font-mono rounded"
+                title="Maintenance margin and SMA"
+              >
+                Margin: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(alpacaAccount.maintenance_margin)}
+                {alpacaAccount.sma !== undefined && ` • SMA: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(alpacaAccount.sma)}`}
+              </span>
+            )}
+
+            {alpacaAccount?.multiplier && (
+              <span
+                data-testid="alpaca-account-type"
+                className="hidden xl:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--brand-teal)] bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded"
+              >
+                Margin {alpacaAccount.multiplier}x
               </span>
             )}
 

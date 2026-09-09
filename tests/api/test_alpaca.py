@@ -29,6 +29,11 @@ MOCK_ACCOUNT = {
     "long_market_value": "15588.55",
     "short_market_value": "0",
     "last_equity": "99923.04",
+    "initial_margin": "7796.08",
+    "maintenance_margin": "4677.65",
+    "regt_buying_power": "183630.35",
+    "sma": "92009.55",
+    "multiplier": "4",
 }
 
 MOCK_POSITIONS = [
@@ -39,7 +44,11 @@ MOCK_POSITIONS = [
         "market_value": "3170.5",
         "asset_class": "us_equity",
         "side": "long",
+        "cost_basis": "3197.9",
+        "current_price": "317.05",
         "unrealized_pl": "-27.4",
+        "unrealized_plpc": "-0.0085",
+        "change_today": "0.0035",
     },
     {
         "symbol": "MSFT",
@@ -48,9 +57,22 @@ MOCK_POSITIONS = [
         "market_value": "2460.05",
         "asset_class": "us_equity",
         "side": "long",
+        "cost_basis": "2475.0",
+        "current_price": "492.01",
         "unrealized_pl": "-14.95",
+        "unrealized_plpc": "-0.006",
+        "change_today": "-0.0035",
     },
 ]
+
+MOCK_HISTORY = {
+    "base_value": 100000.0,
+    "timeframe": "1H",
+    "timestamp": [1788874200, 1788877800],
+    "equity": [99900.0, 99607.64],
+    "profit_loss": [-100.0, -392.36],
+    "profit_loss_pct": [-0.001, -0.0039],
+}
 
 
 def _mock_transport(request: httpx.Request) -> httpx.Response:
@@ -59,6 +81,8 @@ def _mock_transport(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=MOCK_ACCOUNT)
     if path == "/v2/positions":
         return httpx.Response(200, json=MOCK_POSITIONS)
+    if path == "/v2/account/portfolio/history":
+        return httpx.Response(200, json=MOCK_HISTORY)
     return httpx.Response(404, json={"message": "not found"})
 
 
@@ -100,9 +124,32 @@ def test_get_alpaca_account_success() -> None:
     assert data["portfolio_value"] == 99607.64
     assert data["cash"] == 84019.09
     assert data["buying_power"] == 379724.3
+    assert data["day_pnl"] == -315.4  # 99607.64 - 99923.04
+    assert data["total_unrealized_pl"] == -42.35  # -27.4 + -14.95
+    assert data["positions_count"] == 2
+    assert data["multiplier"] == "4"
     assert len(data["positions"]) == 2
     assert data["positions"][0]["symbol"] == "AAPL"
     assert data["positions"][0]["qty"] == 10.0
+    assert data["positions"][0]["current_price"] == 317.05
+    assert data["positions"][0]["cost_basis"] == 3197.9
+    assert data["positions"][0]["unrealized_pl"] == -27.4
+
+
+def test_get_alpaca_history_success() -> None:
+    client = _build_test_client()
+    resp = client.get("/alpaca/history?period=1W&timeframe=1H")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["account_number"] == "PA3C0P4T6AJE"
+    assert data["timeframe"] == "1H"
+    assert data["base_value"] == 100000.0
+    assert len(data["series"]) == 2
+    assert data["series"][0]["equity"] == 99900.0
+    assert data["series"][0]["net_pnl"] == -100.0
+    assert data["series"][1]["equity"] == 99607.64
+    assert data["series"][1]["net_pnl"] == -392.36
 
 
 def test_get_alpaca_account_filter_by_uuid() -> None:
