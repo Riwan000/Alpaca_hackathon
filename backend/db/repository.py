@@ -23,8 +23,10 @@ import datetime as _dt
 import decimal
 from collections.abc import Sequence
 
-from sqlalchemy import MetaData, RowMapping, Table, func, insert, select
+from sqlalchemy import RowMapping, func, insert, select
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _TABLE_NAME = "portfolio_snapshots"
 _POSITIONS_TABLE_NAME = "positions"
@@ -91,10 +93,8 @@ class PortfolioSnapshotRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_TABLE_NAME, MetaData(), autoload_with=engine)
-        self._positions = Table(
-            _POSITIONS_TABLE_NAME, MetaData(), autoload_with=engine
-        )
+        self._table = get_table(engine, _TABLE_NAME)
+        self._positions = get_table(engine, _POSITIONS_TABLE_NAME)
 
     def save(self, record: PortfolioSnapshotRecord) -> PortfolioSnapshotRecord:
         """Insert ``record`` and return a copy carrying the assigned ``id``."""

@@ -26,8 +26,10 @@ import dataclasses
 from collections.abc import Sequence
 from typing import Any, Final
 
-from sqlalchemy import MetaData, RowMapping, Table, func, insert, select
+from sqlalchemy import RowMapping, func, insert, select
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _HYPOTHESES_TABLE = "strategy_hypotheses"
 _DECISIONS_TABLE = "strategy_decisions"
@@ -83,7 +85,7 @@ class StrategyHypothesisRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_HYPOTHESES_TABLE, MetaData(), autoload_with=engine)
+        self._table = get_table(engine, _HYPOTHESES_TABLE)
 
     def create(self, record: StrategyHypothesisRecord) -> StrategyHypothesisRecord:
         """Insert one hypothesis and return a copy carrying the assigned ``id``."""
@@ -204,7 +206,7 @@ class StrategyDecisionRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_DECISIONS_TABLE, MetaData(), autoload_with=engine)
+        self._table = get_table(engine, _DECISIONS_TABLE)
 
     def create(self, record: StrategyDecisionRecord) -> StrategyDecisionRecord:
         """Insert the decision and return a copy carrying the assigned ``id``.

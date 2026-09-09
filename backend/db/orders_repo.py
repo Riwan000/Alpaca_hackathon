@@ -26,8 +26,10 @@ import decimal
 from collections.abc import Sequence
 from typing import Any, Final
 
-from sqlalchemy import MetaData, RowMapping, Table, func, insert, select, update
+from sqlalchemy import RowMapping, func, insert, select, update
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _ORDERS_TABLE = "orders"
 _FILLS_TABLE = "fills"
@@ -125,8 +127,8 @@ class OrderRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._orders = Table(_ORDERS_TABLE, MetaData(), autoload_with=engine)
-        self._fills = Table(_FILLS_TABLE, MetaData(), autoload_with=engine)
+        self._orders = get_table(engine, _ORDERS_TABLE)
+        self._fills = get_table(engine, _FILLS_TABLE)
 
     # -- writes -------------------------------------------------------------- #
 

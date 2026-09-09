@@ -26,8 +26,10 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Final
 
-from sqlalchemy import MetaData, RowMapping, Table, func, insert, select
+from sqlalchemy import RowMapping, func, insert, select
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _TABLE_NAME = "risk_checks"
 
@@ -62,7 +64,7 @@ class RiskCheckRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_TABLE_NAME, MetaData(), autoload_with=engine)
+        self._table = get_table(engine, _TABLE_NAME)
 
     def create(self, record: RiskCheckRecord) -> RiskCheckRecord:
         """Insert one risk evaluation and return a copy carrying the ``id``."""

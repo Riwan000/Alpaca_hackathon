@@ -11,8 +11,10 @@ import datetime as _dt
 import decimal
 from typing import Any
 
-from sqlalchemy import MetaData, Table, desc, insert, select, text
+from sqlalchemy import desc, insert, select, text
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _PERFORMANCE_TABLE = "performance"
 
@@ -35,7 +37,7 @@ class PerformanceRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_PERFORMANCE_TABLE, MetaData(), autoload_with=engine)
+        self._table = get_table(engine, _PERFORMANCE_TABLE)
 
     def save(self, record: PerformanceRecord) -> PerformanceRecord:
         """Persist a performance row, validating net_pnl = portfolio_pnl + hedge_pnl."""

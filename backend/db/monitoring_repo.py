@@ -14,9 +14,10 @@ import datetime as _dt
 import decimal
 from typing import Any
 
-from sqlalchemy import MetaData, Table, desc, insert, select
+from sqlalchemy import desc, insert, select
 from sqlalchemy.engine import Engine
 
+from backend.db.table_cache import get_table
 from backend.models.enums import HedgeAction, TriggerType
 
 _MONITORING_EVENTS_TABLE = "monitoring_events"
@@ -78,10 +79,10 @@ class MonitoringRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._events = Table(_MONITORING_EVENTS_TABLE, MetaData(), autoload_with=engine)
-        self._reassessments = Table(_REASSESSMENT_EVENTS_TABLE, MetaData(), autoload_with=engine)
-        self._changes = Table(_HEDGE_CHANGES_TABLE, MetaData(), autoload_with=engine)
-        self._state = Table(_MONITORING_STATE_TABLE, MetaData(), autoload_with=engine)
+        self._events = get_table(engine, _MONITORING_EVENTS_TABLE)
+        self._reassessments = get_table(engine, _REASSESSMENT_EVENTS_TABLE)
+        self._changes = get_table(engine, _HEDGE_CHANGES_TABLE)
+        self._state = get_table(engine, _MONITORING_STATE_TABLE)
 
     # 1. Monitoring Events (P7-DB-1)
     def record_event(self, record: MonitoringEventRecord) -> MonitoringEventRecord:

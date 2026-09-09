@@ -25,8 +25,10 @@ import dataclasses
 import datetime as _dt
 from typing import Any
 
-from sqlalchemy import MetaData, RowMapping, Table, func, insert, select, update
+from sqlalchemy import RowMapping, func, insert, select, update
 from sqlalchemy.engine import Engine
+
+from backend.db.table_cache import get_table
 
 _TABLE_NAME = "agent_runs"
 
@@ -64,7 +66,7 @@ class AgentRunRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._table = Table(_TABLE_NAME, MetaData(), autoload_with=engine)
+        self._table = get_table(engine, _TABLE_NAME)
 
     def create(self, record: AgentRunRecord) -> AgentRunRecord:
         """Insert a *started* run and return a copy carrying the assigned ``id``.

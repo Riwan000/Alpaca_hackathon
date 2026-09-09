@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
 from backend.api.readback import get_readback_engine
+from backend.db.table_cache import get_table
 from backend.db.workflow_repo import WorkflowRepository
 
 router = APIRouter(tags=["workflow"])
@@ -202,7 +203,7 @@ def get_workflow_state(
     cycle_id is optional; omitting it returns the most-recently updated cycle.
     Returns 404 when no state has been persisted yet.
     """
-    from sqlalchemy import MetaData, Table, desc, select
+    from sqlalchemy import desc, select
 
     from backend.db.workflow_repo import WorkflowStateRecord
 
@@ -212,8 +213,7 @@ def get_workflow_state(
         state = repo.get_state(cycle_id)
     else:
         with engine.connect() as conn:
-            meta = MetaData()
-            tbl = Table("workflow_state", meta, autoload_with=engine)
+            tbl = get_table(engine, "workflow_state")
             row = (
                 conn.execute(
                     select(tbl).order_by(desc(tbl.c.updated_at), desc(tbl.c.id)).limit(1)
@@ -292,10 +292,9 @@ def stream_workflow_state(
                 if time.monotonic() > deadline:
                     return
                 try:
-                    from sqlalchemy import MetaData, Table, desc, select
+                    from sqlalchemy import desc, select
                     with engine.connect() as conn:
-                        meta = MetaData()
-                        tbl = Table("workflow_state", meta, autoload_with=engine)
+                        tbl = get_table(engine, "workflow_state")
                         row = (
                             conn.execute(
                                 select(tbl.c.cycle_id)

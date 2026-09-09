@@ -11,9 +11,10 @@ import dataclasses
 import datetime as _dt
 from typing import Any
 
-from sqlalchemy import MetaData, Table, desc, func, insert, select
+from sqlalchemy import desc, func, insert, select
 from sqlalchemy.engine import Engine
 
+from backend.db.table_cache import get_table
 from backend.models.enums import WorkflowNode, WorkflowStatus
 
 _STATE_TABLE = "workflow_state"
@@ -56,8 +57,8 @@ class WorkflowRepository:
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
-        self._state_table = Table(_STATE_TABLE, MetaData(), autoload_with=engine)
-        self._transitions_table = Table(_TRANSITIONS_TABLE, MetaData(), autoload_with=engine)
+        self._state_table = get_table(engine, _STATE_TABLE)
+        self._transitions_table = get_table(engine, _TRANSITIONS_TABLE)
 
     def set_state(
         self,
