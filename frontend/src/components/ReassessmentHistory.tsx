@@ -105,7 +105,7 @@ export const ReassessmentHistory: React.FC<ReassessmentHistoryProps> = ({
                     {(item.delta * 100).toFixed(1)}%
                     {item.before_hedge_ratio !== undefined && item.after_hedge_ratio !== undefined && (
                       <span className="text-[var(--text-muted)] font-normal ml-1">
-                        {' '}({(item.before_hedge_ratio * 100).toFixed(0)}% â†’ {(item.after_hedge_ratio * 100).toFixed(0)}%)
+                        {' '}({(item.before_hedge_ratio * 100).toFixed(0)}% → {(item.after_hedge_ratio * 100).toFixed(0)}%)
                       </span>
                     )}
                   </div>

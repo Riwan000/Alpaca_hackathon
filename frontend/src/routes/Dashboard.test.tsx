@@ -5,7 +5,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { AppProviders } from '../providers';
 
 describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
-  it('mounts every panel: Portfolio, Risk, Hedge, Recommendation, Comparison, AgentActivity, Performance, Drift, TradeHistory, DecisionTrail', async () => {
+  it('shows the Overview tab panels by default: Performance, WorkflowState, HedgeDriftGauge, Recommendation, RiskOverview', async () => {
     render(
       <MemoryRouter>
         <AppProviders>
@@ -16,24 +16,70 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
 
     // Dashboard root
     expect(screen.getByTestId('dashboard-page')).toBeInTheDocument();
-
-    // Key assembled panels
     expect(screen.getByTestId('demo-walkthrough')).toBeInTheDocument();
+
+    // Overview tab is active by default
     expect(await screen.findByTestId('performance-panel')).toBeInTheDocument();
     expect(await screen.findByTestId('workflow-state-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('hedge-drift-gauge')).toBeInTheDocument();
-    expect(screen.getByTestId('monitoring-panel')).toBeInTheDocument();
-    expect(await screen.findByTestId('hedge-status-panel')).toBeInTheDocument();
-    expect(await screen.findByTestId('risk-overview')).toBeInTheDocument();
+    // The gauge renders once live monitoring state has loaded; before that it
+    // shows an "unavailable" card rather than fabricated ratios.
+    expect(await screen.findByTestId('hedge-drift-gauge')).toBeInTheDocument();
     expect(await screen.findByTestId('recommendation-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('risk-overview')).toBeInTheDocument();
+
+    // Panels that live on other tabs are not mounted yet
+    expect(screen.queryByTestId('hedge-status-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('order-status-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('agent-activity')).not.toBeInTheDocument();
+  });
+
+  it('reveals the Risk tab panels after clicking the Risk tab', async () => {
+    render(
+      <MemoryRouter>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('tab-risk'));
+
+    expect(await screen.findByTestId('hedge-status-panel')).toBeInTheDocument();
     expect(await screen.findByTestId('risk-checklist-panel')).toBeInTheDocument();
     expect(await screen.findByTestId('strategy-comparison')).toBeInTheDocument();
     expect(screen.getByTestId('reassessment-history')).toBeInTheDocument();
+  });
+
+  it('reveals the Execution tab panels after clicking the Execution tab', async () => {
+    render(
+      <MemoryRouter>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('tab-execution'));
+
     expect(await screen.findByTestId('order-status-panel')).toBeInTheDocument();
     expect(screen.getByTestId('trade-history')).toBeInTheDocument();
     expect(screen.getByTestId('decision-trail')).toBeInTheDocument();
     expect(await screen.findByTestId('portfolio-overview')).toBeInTheDocument();
+  });
+
+  it('reveals the Agent / Debug tab panels after clicking the Agent / Debug tab', async () => {
+    render(
+      <MemoryRouter>
+        <AppProviders>
+          <DashboardPage />
+        </AppProviders>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('tab-agent-debug'));
+
     expect(await screen.findByTestId('agent-activity')).toBeInTheDocument();
+    expect(screen.getByTestId('monitoring-panel')).toBeInTheDocument();
   });
 
   it('reset returns the UI to the seed state without a full page reload (P8-FE-6)', async () => {
@@ -76,7 +122,7 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
       </MemoryRouter>
     );
 
-    const targetHedgeVal = screen.getByTestId('target-hedge-value');
+    const targetHedgeVal = await screen.findByTestId('target-hedge-value');
     expect(targetHedgeVal).toHaveTextContent('30.0%');
   });
 });

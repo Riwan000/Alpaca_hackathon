@@ -32,6 +32,7 @@ import { ReassessmentHistory } from '../components/ReassessmentHistory';
 import { TradeHistory, type TradeItem } from '../components/TradeHistory';
 import { DecisionTrail, type DecisionTrailData } from '../components/DecisionTrail';
 import { DemoWalkthrough } from '../components/DemoWalkthrough';
+import { Tabs, type TabItem } from '../components/Tabs';
 import { getUserConfiguration, type UserConfiguration } from './ConfigurationPage';
 
 export const DashboardPage: React.FC = () => {
@@ -116,43 +117,60 @@ export const DashboardPage: React.FC = () => {
       ]
     : [];
 
-  // Build decision trail data
+  // Build decision trail data. Each section is included only when the
+  // corresponding query actually returned real data — a query that failed
+  // or has not yet produced anything renders as "not available" inside
+  // DecisionTrail rather than being backfilled with fabricated placeholder
+  // values (see BUG: fake FILLED trade shown with zero real executions).
+  const firstLeg = trades[0]?.legs?.[0];
+  const latestTrigger = monitoringQuery.data?.trigger_history?.[0];
+
   const trailData: DecisionTrailData = {
-    order_id: selectedTrade?.id || trades[0]?.id || 'ord-100',
-    trade: {
-      symbol: trades[0]?.legs?.[0]?.symbol || 'SPY261218P00500000',
-      action: 'BUY',
-      qty: trades[0]?.legs?.[0]?.qty || 20,
-      price: trades[0]?.legs?.[0]?.price || 8.55,
-      status: executionResult?.status || 'FILLED',
-      filled_at: executionResult?.completed_at ?? undefined,
-    },
-    risk: {
-      verdict: riskDecision?.verdict || 'APPROVE',
-      checks_passed: riskDecision?.checks?.filter((c) => c.passed).length || 4,
-      checks_total: riskDecision?.checks?.length || 4,
-      rationale: riskDecision?.rationale,
-    },
-    strategy: {
-      strategy_type: strategy?.selected_strategy || 'PROTECTIVE_PUT',
-      action: strategy?.decision || 'NEW_HEDGE',
-      rationale: strategy?.rationale || 'Protective Put provides maximum downside protection within budget.',
-    },
+    order_id: selectedTrade?.id || trades[0]?.id || undefined,
+    trade: firstLeg
+      ? {
+          symbol: firstLeg.symbol,
+          action: 'BUY',
+          qty: firstLeg.qty,
+          price: firstLeg.price,
+          status: executionResult?.status || 'UNKNOWN',
+          filled_at: executionResult?.completed_at ?? undefined,
+        }
+      : undefined,
+    risk: riskDecision
+      ? {
+          verdict: riskDecision.verdict,
+          checks_passed: riskDecision.checks?.filter((c) => c.passed).length ?? 0,
+          checks_total: riskDecision.checks?.length ?? 0,
+          rationale: riskDecision.rationale,
+        }
+      : undefined,
+    strategy: strategy
+      ? {
+          strategy_type: strategy.selected_strategy || 'UNKNOWN',
+          action: strategy.decision,
+          rationale: strategy.rationale,
+        }
+      : undefined,
     hypotheses: (allHypotheses || []).map((h) => ({
       strategy_type: h.strategy,
       verdict: h.viable ? 'ACCEPTED' : 'REJECTED',
     })),
-    context: {
-      regime: context?.market_state?.regime || 'NORMAL',
-      vix: context?.market_state?.vix ?? undefined,
-      drawdown: portfolio?.drawdown ?? undefined,
-    },
-    trigger: {
-      trigger_type: monitoringQuery.data?.trigger_history?.[0]?.trigger_type || 'VOLATILITY_SPIKE',
-      observed: monitoringQuery.data?.trigger_history?.[0]?.observed_value,
-      threshold: monitoringQuery.data?.trigger_history?.[0]?.threshold,
-      fired_at: monitoringQuery.data?.trigger_history?.[0]?.observed_at,
-    },
+    context: context
+      ? {
+          regime: context.market_state?.regime || 'UNKNOWN',
+          vix: context.market_state?.vix ?? undefined,
+          drawdown: portfolio?.drawdown ?? undefined,
+        }
+      : undefined,
+    trigger: latestTrigger
+      ? {
+          trigger_type: latestTrigger.trigger_type,
+          observed: latestTrigger.observed_value,
+          threshold: latestTrigger.threshold,
+          fired_at: latestTrigger.observed_at,
+        }
+      : undefined,
   };
 
   const handleReset = () => {
@@ -172,6 +190,199 @@ export const DashboardPage: React.FC = () => {
     setUserConfig(getUserConfiguration());
   };
 
+  // Hedge Drift Gauge inputs. The current ratio must come from live monitoring
+  // state; the target may legitimately come from the user's own configuration.
+  // When neither yields a real number we render an "unavailable" card rather
+  // than a plausible-looking gauge backed by fabricated ratios.
+  const gaugeCurrentRatio = monitoringQuery.data?.hedge_ratio;
+  const gaugeTargetRatio =
+    userConfig?.targetHedgeRatio !== undefined
+      ? userConfig.targetHedgeRatio / 100
+      : monitoringQuery.data?.target_hedge_ratio;
+  const gaugeDeadband =
+    userConfig?.deadbandBuffer !== undefined ? userConfig.deadbandBuffer / 100 : 0.05;
+  const hasHedgeDriftData =
+    typeof gaugeCurrentRatio === 'number' && typeof gaugeTargetRatio === 'number';
+
+  const dashboardTabs: TabItem[] = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      content: (
+        <div className="space-y-6">
+          {/* P&L and Attribution */}
+          <Performance
+            current={pnlCurrentQuery.data}
+            series={pnlSeriesQuery.data || []}
+            isLoading={pnlCurrentQuery.isLoading}
+          />
+
+          {/* Live Workflow Orchestration State */}
+          <WorkflowState
+            workflow={workflow}
+            isLoading={workflowQuery.isLoading}
+            error={workflowQuery.error}
+          />
+
+          {/* Hedge Drift Gauge & Recommendation */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5">
+              {hasHedgeDriftData ? (
+                <HedgeDriftGauge
+                  currentHedgeRatio={gaugeCurrentRatio}
+                  targetHedgeRatio={gaugeTargetRatio}
+                  deadband={gaugeDeadband}
+                />
+              ) : (
+                <div
+                  data-testid="hedge-drift-gauge-unavailable"
+                  className="p-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] h-full"
+                >
+                  <h3 className="text-base font-semibold text-[var(--text-main)]">Hedge Drift Gauge</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Awaiting live monitoring data.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="lg:col-span-7">
+              <Recommendation
+                decision={strategy}
+                currentHedge={context?.current_hedge}
+                objective={
+                  context?.objective
+                    ? {
+                        ...context.objective,
+                        target_hedge_ratio:
+                          userConfig?.targetHedgeRatio !== undefined
+                            ? userConfig.targetHedgeRatio / 100
+                            : context.objective.target_hedge_ratio,
+                        max_hedge_budget_pct:
+                          userConfig?.maxBudget !== undefined
+                            ? userConfig.maxBudget / 100
+                            : context.objective.max_hedge_budget_pct,
+                        drawdown_tolerance_pct:
+                          userConfig?.drawdownTolerance !== undefined
+                            ? userConfig.drawdownTolerance / 100
+                            : context.objective.drawdown_tolerance_pct,
+                      }
+                    : context?.objective
+                }
+                isLoading={strategyQuery.isLoading}
+                error={strategyQuery.error}
+              />
+            </div>
+          </div>
+
+          {/* Risk Overview */}
+          <RiskOverview
+            portfolio={portfolio}
+            isLoading={contextQuery.isLoading}
+            error={contextQuery.error}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'risk',
+      label: 'Risk',
+      content: (
+        <div className="space-y-6">
+          {/* Hedge Status & Risk Checklist */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5">
+              <HedgeStatus
+                currentHedge={context?.current_hedge}
+                activeHypothesis={strategy?.selected_hypothesis}
+                isLoading={contextQuery.isLoading}
+                error={contextQuery.error}
+              />
+            </div>
+            <div className="lg:col-span-7">
+              <RiskChecklist
+                decision={riskDecision}
+                isLoading={riskChecksQuery.isLoading}
+                error={riskChecksQuery.error}
+              />
+            </div>
+          </div>
+
+          {/* Strategy Hypotheses Side-by-Side Comparison */}
+          <StrategyComparison
+            hypotheses={allHypotheses}
+            selectedStrategy={strategy?.selected_strategy}
+            comparisonRows={strategy?.comparison}
+            isLoading={hypothesesQuery.isLoading}
+            error={hypothesesQuery.error}
+          />
+
+          {/* Reassessment History. No read-back query is wired for Level-2
+              reassessment events yet, so this renders its own empty state
+              rather than a fabricated row. TODO: feed from a real
+              useReassessmentEvents() hook once the endpoint is exposed. */}
+          <ReassessmentHistory reassessments={[]} />
+        </div>
+      ),
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      content: (
+        <div className="space-y-6">
+          {/* Broker Order Execution Status & Trade History */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-6">
+              <OrderStatus
+                result={executionResult}
+                isLoading={executionQuery.isLoading}
+                error={executionQuery.error}
+              />
+            </div>
+            <div className="lg:col-span-6">
+              <TradeHistory
+                trades={trades}
+                onSelectTrade={(t) => setSelectedTrade(t)}
+                isLoading={executionQuery.isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Decision Trail Drill-down */}
+          <DecisionTrail data={trailData} />
+
+          {/* Portfolio Overview */}
+          <PortfolioOverview
+            portfolio={portfolio}
+            isLoading={portfolioQuery.isLoading || contextQuery.isLoading}
+            error={portfolioQuery.error || contextQuery.error}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'agent-debug',
+      label: 'Agent / Debug',
+      content: (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-6">
+            <AgentActivity
+              runs={agentRuns}
+              isLoading={agentRunsQuery.isLoading}
+              error={agentRunsQuery.error}
+            />
+          </div>
+          <div className="lg:col-span-6">
+            <MonitoringPanel
+              events={monitoringEventsQuery.data || []}
+              activeTriggers={monitoringQuery.data?.active_triggers || []}
+              isLoading={monitoringEventsQuery.isLoading}
+            />
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6" data-testid="dashboard-page">
       {/* Page Title / Header */}
@@ -186,19 +397,25 @@ export const DashboardPage: React.FC = () => {
               {context && ` • CYCLE ${context.cycle_id.toUpperCase()}`}
             </p>
             <span className="text-[10px] font-mono text-[var(--text-muted)]" data-testid="portfolio-aum">
-              AUM {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio?.total_value ?? 1000000)}
+              {portfolio?.total_value !== undefined
+                ? `AUM ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(portfolio.total_value)}`
+                : 'AUM unavailable'}
             </span>
           </div>
           {/* Telemetry metadata */}
           <div className="sr-only">
-            <span data-testid="greek-delta">{strategy?.selected_hypothesis?.hedge_metrics?.net_delta ?? -700}</span>
+            <span data-testid="greek-delta">
+              {strategy?.selected_hypothesis?.hedge_metrics?.net_delta ?? 'N/A'}
+            </span>
             <span data-testid="monitoring-status">
               {monitoringQuery.data?.reassessment_recommended ? '● REASSESS RECOMMENDED' : '● IDLE'}
             </span>
             <span data-testid="active-trigger-item">
-              {monitoringQuery.data?.active_triggers && monitoringQuery.data.active_triggers.length > 0
+              {!monitoringQuery.data
+                ? 'TRIGGER: UNAVAILABLE'
+                : monitoringQuery.data.active_triggers && monitoringQuery.data.active_triggers.length > 0
                 ? `TRIGGER: ${monitoringQuery.data.active_triggers.join(', ')}`
-                : 'TRIGGER: DRAWDOWN_LIMIT'}
+                : 'TRIGGER: NONE'}
             </span>
           </div>
         </div>
@@ -251,163 +468,9 @@ export const DashboardPage: React.FC = () => {
       {/* Demo Script Walkthrough Banner with Reset Button */}
       <DemoWalkthrough onReset={handleReset} />
 
-      {/* P&L and Attribution */}
-      <Performance
-        current={pnlCurrentQuery.data}
-        series={pnlSeriesQuery.data || []}
-        isLoading={pnlCurrentQuery.isLoading}
-      />
-
-      {/* Live Workflow Orchestration State */}
-      <WorkflowState
-        workflow={workflow}
-        isLoading={workflowQuery.isLoading}
-        error={workflowQuery.error}
-      />
-
-      {/* Hedge Drift Gauge & Monitoring Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
-          <HedgeDriftGauge
-            currentHedgeRatio={monitoringQuery.data?.hedge_ratio ?? 0.19}
-            targetHedgeRatio={
-              userConfig?.targetHedgeRatio !== undefined
-                ? userConfig.targetHedgeRatio / 100
-                : (monitoringQuery.data?.target_hedge_ratio ?? 0.20)
-            }
-            deadband={
-              userConfig?.deadbandBuffer !== undefined
-                ? userConfig.deadbandBuffer / 100
-                : 0.05
-            }
-          />
-        </div>
-        <div className="lg:col-span-7">
-          <MonitoringPanel
-            events={monitoringEventsQuery.data || []}
-            activeTriggers={monitoringQuery.data?.active_triggers || []}
-            isLoading={monitoringEventsQuery.isLoading}
-          />
-        </div>
-      </div>
-
-      {/* Hedge Status & Risk Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
-          <HedgeStatus
-            currentHedge={context?.current_hedge}
-            activeHypothesis={strategy?.selected_hypothesis}
-            isLoading={contextQuery.isLoading}
-            error={contextQuery.error}
-          />
-        </div>
-        <div className="lg:col-span-7">
-          <RiskOverview
-            portfolio={portfolio}
-            isLoading={contextQuery.isLoading}
-            error={contextQuery.error}
-          />
-        </div>
-      </div>
-
-      {/* Recommendation Panel */}
-      <Recommendation
-        decision={strategy}
-        currentHedge={context?.current_hedge}
-        objective={
-          context?.objective
-            ? {
-                ...context.objective,
-                target_hedge_ratio:
-                  userConfig?.targetHedgeRatio !== undefined
-                    ? userConfig.targetHedgeRatio / 100
-                    : context.objective.target_hedge_ratio,
-                max_hedge_budget_pct:
-                  userConfig?.maxBudget !== undefined
-                    ? userConfig.maxBudget / 100
-                    : context.objective.max_hedge_budget_pct,
-                drawdown_tolerance_pct:
-                  userConfig?.drawdownTolerance !== undefined
-                    ? userConfig.drawdownTolerance / 100
-                    : context.objective.drawdown_tolerance_pct,
-              }
-            : context?.objective
-        }
-        isLoading={strategyQuery.isLoading}
-        error={strategyQuery.error}
-      />
-
-      {/* Quantitative Risk Gate Checks */}
-      <RiskChecklist
-        decision={riskDecision}
-        isLoading={riskChecksQuery.isLoading}
-        error={riskChecksQuery.error}
-      />
-
-      {/* Strategy Hypotheses Side-by-Side Comparison */}
-      <StrategyComparison
-        hypotheses={allHypotheses}
-        selectedStrategy={strategy?.selected_strategy}
-        comparisonRows={strategy?.comparison}
-        isLoading={hypothesesQuery.isLoading}
-        error={hypothesesQuery.error}
-      />
-
-      {/* Reassessment History */}
-      <ReassessmentHistory
-        reassessments={[
-          {
-            id: 1,
-            cycle_id: context?.cycle_id || 'cyc-001',
-            trigger: 'VOLATILITY_SPIKE',
-            outcome: 'DECREASE',
-            reason: 'Risk subsided with VIX falling below threshold. Trimming excess put coverage.',
-            created_at: new Date().toISOString(),
-            delta: -0.50,
-            before_hedge_ratio: 0.80,
-            after_hedge_ratio: 0.30,
-          },
-        ]}
-      />
-
-      {/* Broker Order Execution Status & Trade History */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-6">
-          <OrderStatus
-            result={executionResult}
-            isLoading={executionQuery.isLoading}
-            error={executionQuery.error}
-          />
-        </div>
-        <div className="lg:col-span-6">
-          <TradeHistory
-            trades={trades}
-            onSelectTrade={(t) => setSelectedTrade(t)}
-            isLoading={executionQuery.isLoading}
-          />
-        </div>
-      </div>
-
-      {/* Decision Trail Drill-down */}
-      <DecisionTrail data={trailData} />
-
-      {/* Portfolio Overview & Agent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7">
-          <PortfolioOverview
-            portfolio={portfolio}
-            isLoading={portfolioQuery.isLoading || contextQuery.isLoading}
-            error={portfolioQuery.error || contextQuery.error}
-          />
-        </div>
-        <div className="lg:col-span-5">
-          <AgentActivity
-            runs={agentRuns}
-            isLoading={agentRunsQuery.isLoading}
-            error={agentRunsQuery.error}
-          />
-        </div>
-      </div>
+      {/* Tabbed panel groups: Overview is the default landing view; the rest
+          (Risk, Execution, Agent/Debug) are reachable via the tab bar. */}
+      <Tabs tabs={dashboardTabs} defaultActiveId="overview" />
     </div>
   );
 };

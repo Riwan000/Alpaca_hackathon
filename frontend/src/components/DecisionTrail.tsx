@@ -195,10 +195,12 @@ export const DecisionTrail: React.FC<DecisionTrailProps> = ({
                 4
               </span>
               <span className="text-sm font-semibold text-[var(--text-main)]">Strategy Manager Decision</span>
-              {data.strategy && (
+              {data.strategy ? (
                 <span className="text-xs font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-900">
                   {data.strategy.strategy_type} ({data.strategy.action})
                 </span>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)] italic">No strategy decision yet</span>
               )}
             </div>
             <span className="text-xs text-[var(--text-muted)] font-mono">{expandedHop === 'strategy' ? 'â–²' : 'â–¼'}</span>
@@ -225,7 +227,7 @@ export const DecisionTrail: React.FC<DecisionTrailProps> = ({
                 5
               </span>
               <span className="text-sm font-semibold text-[var(--text-main)]">Deterministic Risk Gate</span>
-              {data.risk && (
+              {data.risk ? (
                 <span className={`text-xs font-mono px-2 py-0.5 rounded border ${
                   data.risk.verdict === 'APPROVE'
                     ? 'bg-[var(--status-safe)]/10 text-[var(--status-safe)] border-emerald-900'
@@ -233,6 +235,8 @@ export const DecisionTrail: React.FC<DecisionTrailProps> = ({
                 }`}>
                   Verdict: {data.risk.verdict} ({data.risk.checks_passed}/{data.risk.checks_total} checks passed)
                 </span>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)] italic">No risk evaluation yet</span>
               )}
             </div>
             <span className="text-xs text-[var(--text-muted)] font-mono">{expandedHop === 'risk' ? 'â–²' : 'â–¼'}</span>
@@ -256,10 +260,12 @@ export const DecisionTrail: React.FC<DecisionTrailProps> = ({
                 6
               </span>
               <span className="text-sm font-semibold text-[var(--text-main)]">Broker Order Execution</span>
-              {data.trade && (
+              {data.trade ? (
                 <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-900">
                   {data.trade.symbol} â€” {data.trade.status}
                 </span>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)] italic">No trade executed yet for this cycle</span>
               )}
             </div>
             <span className="text-xs text-[var(--text-muted)] font-mono">{expandedHop === 'trade' ? 'â–²' : 'â–¼'}</span>
