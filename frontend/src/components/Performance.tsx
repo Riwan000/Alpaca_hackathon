@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export interface PerformanceSnapshot {
   portfolio_pnl: number;
@@ -161,43 +161,55 @@ export const Performance: React.FC<PerformanceProps> = ({
             <div data-testid="empty-chart" className="text-xs text-[var(--text-muted)] font-mono">
               Insufficient time series points recorded yet.
             </div>
-          ) : (
-            <svg data-testid="performance-svg" className="w-full h-full" viewBox="0 0 500 120" preserveAspectRatio="none">
-              {/* Zero line */}
-              <line x1="0" y1="60" x2="500" y2="60" stroke="#334155" strokeWidth="1" strokeDasharray="3 3" />
+          ) : (() => {
+            const allVals = series.flatMap((p) => [p.net_pnl, p.benchmark_pnl]);
+            const minVal = allVals.length > 0 ? Math.min(...allVals, 0) : 0;
+            const maxVal = allVals.length > 0 ? Math.max(...allVals, 0) : 0;
+            const range = Math.max(maxVal - minVal, 50);
+            const getY = (val: number) => {
+              const norm = (val - minVal) / range;
+              return Math.round((105 - norm * 85) * 10) / 10;
+            };
+            const zeroY = getY(0);
 
-              {/* Hedged Net Line */}
-              <polyline
-                data-testid="hedged-series-line"
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="2.5"
-                points={series
-                  .map((p, idx) => {
-                    const x = (idx / Math.max(series.length - 1, 1)) * 480 + 10;
-                    const y = 60 - Math.min(Math.max(p.net_pnl / 1000, -50), 50);
-                    return `${x},${y}`;
-                  })
-                  .join(' ')}
-              />
+            return (
+              <svg data-testid="performance-svg" className="w-full h-full" viewBox="0 0 500 120" preserveAspectRatio="none">
+                {/* Zero line */}
+                <line x1="0" y1={zeroY} x2="500" y2={zeroY} stroke="#334155" strokeWidth="1" strokeDasharray="3 3" />
 
-              {/* Unhedged Benchmark Line */}
-              <polyline
-                data-testid="unhedged-series-line"
-                fill="none"
-                stroke="#f43f5e"
-                strokeWidth="2"
-                strokeDasharray="4 3"
-                points={series
-                  .map((p, idx) => {
-                    const x = (idx / Math.max(series.length - 1, 1)) * 480 + 10;
-                    const y = 60 - Math.min(Math.max(p.benchmark_pnl / 1000, -50), 50);
-                    return `${x},${y}`;
-                  })
-                  .join(' ')}
-              />
-            </svg>
-          )}
+                {/* Hedged Net Line */}
+                <polyline
+                  data-testid="hedged-series-line"
+                  fill="none"
+                  stroke="#06b6d4"
+                  strokeWidth="2.5"
+                  points={series
+                    .map((p, idx) => {
+                      const x = (idx / Math.max(series.length - 1, 1)) * 480 + 10;
+                      const y = getY(p.net_pnl);
+                      return `${x},${y}`;
+                    })
+                    .join(' ')}
+                />
+
+                {/* Unhedged Benchmark Line */}
+                <polyline
+                  data-testid="unhedged-series-line"
+                  fill="none"
+                  stroke="#f43f5e"
+                  strokeWidth="2"
+                  strokeDasharray="4 3"
+                  points={series
+                    .map((p, idx) => {
+                      const x = (idx / Math.max(series.length - 1, 1)) * 480 + 10;
+                      const y = getY(p.benchmark_pnl);
+                      return `${x},${y}`;
+                    })
+                    .join(' ')}
+                />
+              </svg>
+            );
+          })()}
         </div>
       </div>
     </div>

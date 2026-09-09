@@ -124,12 +124,12 @@ export const DashboardPage: React.FC = () => {
         net_pnl: alpacaAccount.day_pnl ?? alpacaAccount.total_unrealized_pl ?? 0,
         drawdown: alpacaAccount.drawdown ?? 0,
         hedge_cost: 0,
-        benchmark_pnl: alpacaAccount.day_pnl ?? 0,
+        benchmark_pnl: alpacaAccount.day_pnl ?? alpacaAccount.total_unrealized_pl ?? 0,
       }
     : pnlCurrentQuery.data;
 
   const performanceSeries =
-    activeId && alpacaHistoryQuery.data?.series && alpacaHistoryQuery.data.series.length > 0
+    alpacaHistoryQuery.data?.series && alpacaHistoryQuery.data.series.length > 0
       ? alpacaHistoryQuery.data.series.map((s, idx) => ({
           cycle_id: `alpaca-${idx}`,
           ts: s.ts,

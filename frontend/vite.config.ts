@@ -23,7 +23,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '^/(context|strategy|portfolio|agent-runs|risk|execution|orders|monitoring|workflow|workflow-state|cycle|run-cycle|health|pnl|decision-trail|debug|analyze)': {
+      '^/(alpaca|context|strategy|portfolio|agent-runs|risk|execution|orders|monitoring|workflow|workflow-state|cycle|run-cycle|health|pnl|decision-trail|debug|analyze)': {
         target: apiTarget,
         changeOrigin: true,
       },

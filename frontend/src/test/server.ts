@@ -692,10 +692,8 @@ export const handlers = [
   http.get('*/alpaca/account', ({ request }) => {
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account_id');
-    if (!accountId) {
-      return new HttpResponse(JSON.stringify({ detail: 'No account ID provided' }), { status: 404 });
-    }
     if (
+      accountId &&
       accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_id.toLowerCase() &&
       accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_number.toLowerCase()
     ) {
@@ -706,10 +704,8 @@ export const handlers = [
   http.get('*/alpaca/history', ({ request }) => {
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account_id');
-    if (!accountId) {
-      return new HttpResponse(JSON.stringify({ detail: 'No account ID provided' }), { status: 404 });
-    }
     if (
+      accountId &&
       accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_id.toLowerCase() &&
       accountId.toLowerCase() !== STUB_ALPACA_ACCOUNT.account_number.toLowerCase()
     ) {

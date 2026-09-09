@@ -10,14 +10,25 @@ from __future__ import annotations
 
 import datetime as _dt
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
 from backend.api.readback import get_readback_engine
+from backend.config import Settings, get_settings
 from backend.db.performance_repo import PerformanceRepository
+from backend.integrations.alpaca.client import AlpacaClient, resolve_alpaca_config
 
 router = APIRouter(tags=["pnl"])
+
+
+def _f(val: Any, default: float = 0.0) -> float:
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default
 
 
 class PerformancePointOut(BaseModel):
@@ -35,11 +46,36 @@ class PerformancePointOut(BaseModel):
 @router.get("/pnl/current", response_model=PerformancePointOut)
 def get_current_pnl(
     engine: Engine = Depends(get_readback_engine),
+    settings: Settings = Depends(get_settings),
 ) -> PerformancePointOut:
     """Return the latest performance snapshot."""
     repo = PerformanceRepository(engine)
     latest = repo.get_latest()
     if not latest:
+        try:
+            resolve_alpaca_config(settings)
+            client = AlpacaClient(settings)
+            with client:
+                account = client.get_account()
+                positions = client.get_positions()
+            portfolio_val = _f(account.get("portfolio_value") or account.get("equity"))
+            last_equity = _f(account.get("last_equity") or portfolio_val)
+            day_pnl = round(portfolio_val - last_equity, 2)
+            total_unrealized_pl = round(sum(_f(p.get("unrealized_pl")) for p in (positions or [])), 2)
+            drawdown = round((portfolio_val - last_equity) / last_equity, 6) if last_equity and portfolio_val < last_equity else 0.0
+            return PerformancePointOut(
+                cycle_id="alpaca-live",
+                portfolio_pnl=total_unrealized_pl if total_unrealized_pl != 0 else day_pnl,
+                hedge_pnl=0.0,
+                net_pnl=day_pnl if day_pnl != 0 else total_unrealized_pl,
+                drawdown=drawdown,
+                hedge_cost=0.0,
+                benchmark_pnl=day_pnl if day_pnl != 0 else total_unrealized_pl,
+                ts=_dt.datetime.now(_dt.timezone.utc),
+            )
+        except Exception:
+            pass
+
         return PerformancePointOut(
             cycle_id="initial",
             portfolio_pnl=0.0,
@@ -69,10 +105,51 @@ def get_pnl_series(
     cycle_id: str | None = Query(default=None, description="Optional cycle filter"),
     limit: int = Query(default=100, ge=1, le=1000),
     engine: Engine = Depends(get_readback_engine),
+    settings: Settings = Depends(get_settings),
 ) -> list[PerformancePointOut]:
     """Return ordered performance time series."""
     repo = PerformanceRepository(engine)
     series = repo.get_series(cycle_id=cycle_id, limit=limit)
+    if not series and not cycle_id:
+        try:
+            resolve_alpaca_config(settings)
+            client = AlpacaClient(settings)
+            with client:
+                hist = client.get_portfolio_history(period="1W", timeframe="1H")
+            base_val = _f(hist.get("base_value"), default=100000.0)
+            timestamps = hist.get("timestamp") or []
+            equities = hist.get("equity") or []
+            profits = hist.get("profit_loss") or []
+            peak = base_val
+            out_points: list[PerformancePointOut] = []
+            for i, (ts, eq, pl) in enumerate(zip(timestamps, equities, profits)):
+                eq_val = _f(eq, base_val)
+                pl_val = _f(pl)
+                if eq_val > peak:
+                    peak = eq_val
+                dd = round((eq_val - peak) / peak, 6) if peak > 0 else 0.0
+                try:
+                    dt_val = _dt.datetime.fromtimestamp(ts, tz=_dt.timezone.utc)
+                except Exception:
+                    dt_val = _dt.datetime.now(_dt.timezone.utc)
+                out_points.append(
+                    PerformancePointOut(
+                        id=i + 1,
+                        cycle_id=f"alpaca-{i}",
+                        portfolio_pnl=pl_val,
+                        hedge_pnl=0.0,
+                        net_pnl=pl_val,
+                        drawdown=dd,
+                        hedge_cost=0.0,
+                        benchmark_pnl=pl_val,
+                        ts=dt_val,
+                    )
+                )
+            if out_points:
+                return out_points
+        except Exception:
+            pass
+
     return [
         PerformancePointOut(
             id=r.id,
