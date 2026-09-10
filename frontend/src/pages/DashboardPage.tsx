@@ -187,11 +187,7 @@ export const DashboardPage: React.FC = () => {
   // Separate equity and option holdings if any exist
   const optionPositions =
     alpacaAccount?.positions.filter(
-      (p) => p.asset_class === 'us_option' || p.symbol.length > 6
-    ) || [];
-  const equityPositions =
-    alpacaAccount?.positions.filter(
-      (p) => p.asset_class !== 'us_option' && p.symbol.length <= 6
+      (p) => (p.asset_class as string) === 'us_option' || p.asset_class === 'OPTION' || p.symbol.length > 6
     ) || [];
 
   const hedgeDayPnl = optionPositions.reduce(
@@ -395,8 +391,13 @@ export const DashboardPage: React.FC = () => {
               <Recommendation
                 decision={strategy}
                 currentHedge={
-                  gaugeCurrentRatio !== undefined
-                    ? { hedge_ratio: gaugeCurrentRatio, target_hedge_ratio: gaugeTargetRatio ?? 0.20 }
+                  typeof gaugeCurrentRatio === 'number'
+                    ? {
+                        active: gaugeCurrentRatio > 0,
+                        legs: context?.current_hedge?.legs || [],
+                        hedge_ratio: gaugeCurrentRatio,
+                        target_hedge_ratio: typeof gaugeTargetRatio === 'number' ? gaugeTargetRatio : 0.20,
+                      }
                     : context?.current_hedge
                 }
                 objective={
