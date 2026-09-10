@@ -64,8 +64,6 @@ export const WorkflowState: React.FC<WorkflowStateProps> = ({
 
   const currentNode: WorkflowNode = workflow?.current_node || 'IDLE';
   const status = workflow?.status || 'idle';
-  const progressPct = workflow?.progress_pct ?? (status === 'completed' || currentNode === 'COMPLETE' ? 100 : 0);
-  const isHalted = status === 'halted' || status === 'failed' || currentNode === 'HALTED' || Boolean(workflow?.halt_reason);
 
   const getCurrentNodeIndex = (): number => {
     if (currentNode === 'COMPLETE') return WORKFLOW_NODES.length;
@@ -74,6 +72,14 @@ export const WorkflowState: React.FC<WorkflowStateProps> = ({
   };
 
   const currentIndex = getCurrentNodeIndex();
+  const progressPct =
+    workflow?.progress_pct ??
+    (status === 'completed' || currentNode === 'COMPLETE'
+      ? 100
+      : currentIndex >= 0
+      ? Math.round(((currentIndex + 1) / WORKFLOW_NODES.length) * 100)
+      : 0);
+  const isHalted = status === 'halted' || status === 'failed' || currentNode === 'HALTED' || Boolean(workflow?.halt_reason);
 
   return (
     <div
