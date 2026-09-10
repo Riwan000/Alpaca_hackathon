@@ -59,23 +59,34 @@ export const DashboardPage: React.FC = () => {
   }, []);
 
   const activeId = providedId || (userConfig?.alpacaAccountId?.trim() ? userConfig.alpacaAccountId.trim() : undefined);
+  const workflowQuery = useWorkflowState();
+  const effectiveCycleId = workflowQuery.data?.cycle_id;
   const contextQuery = useHedgeContext();
   const portfolioQuery = usePortfolioLatest();
   const alpacaAccountQuery = useAlpacaAccount(activeId, { enabled: Boolean(activeId) });
   const alpacaHistoryQuery = useAlpacaHistory(activeId, '1W', '1H', { enabled: Boolean(activeId) });
-  const strategyQuery = useStrategyDecision();
-  // Hypotheses are persisted across every cycle ever run; without a cycle_id filter
-  // this returns the full history (e.g. 4 hedge-family hypotheses x N past cycles),
-  // which duplicates strategy types in the comparison grid. Scope to the current cycle.
-  const hypothesesQuery = useStrategyHypotheses(contextQuery.data?.cycle_id);
-  const agentRunsQuery = useAgentRuns();
+  const strategyQuery = useStrategyDecision(effectiveCycleId);
+  const hypothesesQuery = useStrategyHypotheses(effectiveCycleId || contextQuery.data?.cycle_id);
+  const agentRunsQuery = useAgentRuns(effectiveCycleId);
   const monitoringQuery = useMonitoringState();
-  const monitoringEventsQuery = useMonitoringEvents();
-  const workflowQuery = useWorkflowState();
-  const riskChecksQuery = useRiskChecks();
-  const executionQuery = useExecutionResult();
+  const monitoringEventsQuery = useMonitoringEvents(effectiveCycleId);
+  const riskChecksQuery = useRiskChecks(effectiveCycleId);
+  const executionQuery = useExecutionResult(effectiveCycleId);
   const pnlCurrentQuery = usePnlCurrent();
-  const pnlSeriesQuery = usePnlSeries();
+  const pnlSeriesQuery = usePnlSeries(effectiveCycleId);
+
+  // When workflow finishes running, automatically refetch telemetry and decisions
+  useEffect(() => {
+    if (workflowQuery.data?.status === 'completed' || workflowQuery.data?.status === 'idle') {
+      strategyQuery.refetch();
+      hypothesesQuery.refetch();
+      agentRunsQuery.refetch();
+      riskChecksQuery.refetch();
+      executionQuery.refetch();
+      contextQuery.refetch();
+      monitoringQuery.refetch();
+    }
+  }, [workflowQuery.data?.status, workflowQuery.data?.cycle_id]);
 
   const isLoading =
     contextQuery.isLoading ||
@@ -859,6 +870,13 @@ export const DashboardPage: React.FC = () => {
             onCycleTriggered={() => {
               workflowQuery.refetch();
               agentRunsQuery.refetch();
+              contextQuery.refetch();
+              strategyQuery.refetch();
+              hypothesesQuery.refetch();
+              riskChecksQuery.refetch();
+              executionQuery.refetch();
+              monitoringQuery.refetch();
+              alpacaAccountQuery.refetch();
             }}
           />
           <Link
@@ -869,7 +887,7 @@ export const DashboardPage: React.FC = () => {
             Adaptation Story
           </Link>
           <Link
-            to={`/strategy/${context?.cycle_id || 'cyc-001'}`}
+            to={`/strategy/${effectiveCycleId || context?.cycle_id || 'selected'}`}
             className="px-3 py-2 bg-[var(--bg-subtle)] text-[var(--text-main)] text-xs font-mono font-medium flex items-center gap-1 hover:bg-[var(--bg-subtle-hover)] rounded transition-colors border border-[var(--border-dark)]"
           >
             Strategy Details
