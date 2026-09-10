@@ -17,7 +17,7 @@ import {
   usePnlSeries,
   useMonitoringEvents,
 } from '../api/queries';
-import type { PortfolioState } from '../api/types';
+import type { PortfolioState, CurrentHedge } from '../api/types';
 import { PortfolioOverview } from '../components/PortfolioOverview';
 import { RiskOverview } from '../components/RiskOverview';
 import { Recommendation } from '../components/Recommendation';
@@ -372,6 +372,50 @@ export const DashboardPage: React.FC = () => {
   const hasHedgeDriftData =
     typeof gaugeCurrentRatio === 'number' && typeof gaugeTargetRatio === 'number';
 
+  // Live hedge representation built directly from active Alpaca positions
+  const alpacaCurrentHedge: CurrentHedge | undefined = React.useMemo(() => {
+    if (!alpacaAccount) return undefined;
+    const isHedged = optionPositions.length > 0;
+    if (!isHedged) {
+      return {
+        active: false,
+        strategy_type: 'NO_HEDGE',
+        hedge_ratio: 0,
+        target_hedge_ratio: typeof gaugeTargetRatio === 'number' ? gaugeTargetRatio : 0.20,
+        downside_protection_pct: 0,
+        cost: 0,
+        unrealized_pnl: 0,
+        legs: [],
+      };
+    }
+    const firstOpt = optionPositions[0];
+    const match = firstOpt?.symbol.match(/^([A-Za-z]+)(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/);
+    const expStr = match ? `20${match[2]}-${match[3]}-${match[4]}` : '2026-09-18';
+    return {
+      active: true,
+      strategy_type: optionPositions.length === 1 ? 'PROTECTIVE_PUT' : 'COLLAR',
+      hedge_ratio: liveHedgeRatio ?? 0,
+      target_hedge_ratio: typeof gaugeTargetRatio === 'number' ? gaugeTargetRatio : 0.20,
+      downside_protection_pct: liveHedgeRatio ?? 0,
+      cost: hedgeCost,
+      unrealized_pnl: hedgeDayPnl,
+      expiration: expStr,
+      legs: optionPositions.map((p) => {
+        const legMatch = p.symbol.match(/^([A-Za-z]+)(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/);
+        return {
+          underlying: legMatch ? legMatch[1] : (p.symbol.replace(/\d.*$/, '') || 'SPY'),
+          right: (legMatch && legMatch[5] === 'C' ? 'CALL' : 'PUT') as 'CALL' | 'PUT',
+          side: (p.side as 'BUY' | 'SELL') || 'BUY',
+          quantity: Math.abs(p.qty),
+          strike: legMatch ? parseInt(legMatch[6], 10) / 1000 : 600,
+          expiration: legMatch ? `20${legMatch[2]}-${legMatch[3]}-${legMatch[4]}` : '2026-09-18',
+          limit_price: p.current_price,
+          occ_symbol: p.symbol,
+        };
+      }),
+    };
+  }, [alpacaAccount, optionPositions, liveHedgeRatio, gaugeTargetRatio, hedgeCost, hedgeDayPnl]);
+
   const dashboardTabs: TabItem[] = [
     {
       id: 'overview',
@@ -417,14 +461,15 @@ export const DashboardPage: React.FC = () => {
               <Recommendation
                 decision={strategy}
                 currentHedge={
-                  typeof gaugeCurrentRatio === 'number'
+                  alpacaCurrentHedge ||
+                  (typeof gaugeCurrentRatio === 'number'
                     ? {
                         active: gaugeCurrentRatio > 0,
                         legs: context?.current_hedge?.legs || [],
                         hedge_ratio: gaugeCurrentRatio,
                         target_hedge_ratio: typeof gaugeTargetRatio === 'number' ? gaugeTargetRatio : 0.20,
                       }
-                    : context?.current_hedge
+                    : context?.current_hedge)
                 }
                 objective={
                   context?.objective
@@ -469,10 +514,10 @@ export const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-5">
               <HedgeStatus
-                currentHedge={context?.current_hedge}
+                currentHedge={alpacaCurrentHedge || context?.current_hedge}
                 activeHypothesis={strategy?.selected_hypothesis}
-                isLoading={contextQuery.isLoading}
-                error={contextQuery.error}
+                isLoading={alpacaAccount ? alpacaAccountQuery.isLoading : contextQuery.isLoading}
+                error={alpacaAccountQuery.error || contextQuery.error}
               />
             </div>
             <div className="lg:col-span-7">
