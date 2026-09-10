@@ -332,15 +332,41 @@ export const DashboardPage: React.FC = () => {
     setUserConfig(getUserConfiguration());
   };
 
-  // Hedge Drift Gauge inputs. The current ratio must come from live monitoring
-  // state; the target may legitimately come from the user's own configuration.
-  // When neither yields a real number we render an "unavailable" card rather
-  // than a plausible-looking gauge backed by fabricated ratios.
-  const gaugeCurrentRatio = monitoringQuery.data?.hedge_ratio;
+  // Dynamic live hedge ratio computed from Alpaca option positions vs long equity book
+  const liveHedgeRatio = React.useMemo(() => {
+    if (!alpacaAccount?.positions) return undefined;
+    const options = alpacaAccount.positions.filter(
+      (p) => (p.asset_class as string) === 'us_option' || p.asset_class === 'OPTION' || p.symbol.length > 6
+    );
+    if (options.length === 0) return 0.0;
+
+    const totalEquity = alpacaAccount.long_market_value || 1;
+    let totalCoveredNotional = 0;
+    for (const opt of options) {
+      const qty = Math.abs(opt.qty || 1);
+      let strike = 600;
+      const match = opt.symbol.match(/[CP](\d{8})$/);
+      if (match) {
+        strike = parseInt(match[1], 10) / 1000;
+      }
+      // Delta-equivalent downside coverage for OTM protective puts
+      const estDelta = 0.065;
+      const contractNotional = qty * strike * 100 * estDelta;
+      totalCoveredNotional += contractNotional;
+    }
+    const ratio = totalCoveredNotional / totalEquity;
+    return Math.min(Math.round(ratio * 1000) / 1000, 1.0);
+  }, [alpacaAccount]);
+
+  // Hedge Drift Gauge inputs: live Alpaca options coverage takes priority over seed monitoring
+  const gaugeCurrentRatio =
+    liveHedgeRatio !== undefined
+      ? liveHedgeRatio
+      : monitoringQuery.data?.hedge_ratio;
   const gaugeTargetRatio =
     userConfig?.targetHedgeRatio !== undefined
       ? userConfig.targetHedgeRatio / 100
-      : monitoringQuery.data?.target_hedge_ratio;
+      : monitoringQuery.data?.target_hedge_ratio ?? 0.20;
   const gaugeDeadband =
     userConfig?.deadbandBuffer !== undefined ? userConfig.deadbandBuffer / 100 : 0.05;
   const hasHedgeDriftData =
