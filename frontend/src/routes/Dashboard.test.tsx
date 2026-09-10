@@ -146,7 +146,7 @@ describe('Dashboard Full Assembly & Demo Controls (P8-FE-2, P8-FE-6)', () => {
     expect(await screen.findByTestId('alpaca-live-bp')).toHaveTextContent('$379,724');
 
     // Performance Panel on Overview tab reflects Alpaca P&L and Trajectory chart
-    expect(await screen.findByTestId('portfolio-pnl-tile')).toHaveTextContent('-$392.35');
+    expect(await screen.findByTestId('portfolio-pnl-tile')).toHaveTextContent('-$315.40');
     expect(await screen.findByTestId('hedged-series-line')).toBeInTheDocument();
 
     // Switch to Execution tab and check PortfolioOverview shows Alpaca badge, KPI ribbon, and holdings table

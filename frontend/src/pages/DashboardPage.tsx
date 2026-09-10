@@ -116,15 +116,36 @@ export const DashboardPage: React.FC = () => {
       }
     : rawPortfolio;
 
+  // Separate equity and option holdings if any exist
+  const optionPositions =
+    alpacaAccount?.positions.filter(
+      (p) => p.asset_class === 'us_option' || p.symbol.length > 6
+    ) || [];
+  const equityPositions =
+    alpacaAccount?.positions.filter(
+      (p) => p.asset_class !== 'us_option' && p.symbol.length <= 6
+    ) || [];
+
+  const hedgeDayPnl = optionPositions.reduce(
+    (sum, p) => sum + (p.unrealized_intraday_pl ?? p.unrealized_pl ?? 0),
+    0
+  );
+  const hedgeCost = optionPositions.reduce(
+    (sum, p) => sum + (p.cost_basis ?? 0),
+    0
+  );
+  const totalDayPnl = alpacaAccount?.day_pnl ?? 0;
+  const equityDayPnl = totalDayPnl - hedgeDayPnl;
+
   // Live Alpaca performance metrics feed Performance panel and trajectory chart
   const performanceCurrent: PerformanceSnapshot | undefined = alpacaAccount
     ? {
-        portfolio_pnl: alpacaAccount.total_unrealized_pl ?? alpacaAccount.day_pnl ?? 0,
-        hedge_pnl: 0,
-        net_pnl: alpacaAccount.day_pnl ?? alpacaAccount.total_unrealized_pl ?? 0,
+        portfolio_pnl: equityDayPnl,
+        hedge_pnl: hedgeDayPnl,
+        net_pnl: totalDayPnl,
         drawdown: alpacaAccount.drawdown ?? 0,
-        hedge_cost: 0,
-        benchmark_pnl: alpacaAccount.day_pnl ?? alpacaAccount.total_unrealized_pl ?? 0,
+        hedge_cost: hedgeCost,
+        benchmark_pnl: equityDayPnl,
       }
     : pnlCurrentQuery.data;
 
