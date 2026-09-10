@@ -8,7 +8,7 @@ import { RiskChecklist } from '../components/RiskChecklist';
 
 export const StrategyDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const decisionQuery = useStrategyDecision();
+  const decisionQuery = useStrategyDecision(id);
   const hypothesisQuery = useStrategyHypothesis(id);
 
   const isLoading = decisionQuery.isLoading || hypothesisQuery.isLoading;

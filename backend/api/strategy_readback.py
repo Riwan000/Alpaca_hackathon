@@ -104,10 +104,23 @@ def get_strategy_hypothesis(
             rec = next((r for r in cycle_rows if r.verdict == "ACCEPTED"), cycle_rows[0])
 
     if rec is not None:
+        metrics_data = rec.metrics if isinstance(rec.metrics, dict) else {}
+        cost = float(metrics_data.get("cost", EXAMPLE_STRATEGY_HYPOTHESIS.cost))
         return EXAMPLE_STRATEGY_HYPOTHESIS.model_copy(
             update={
                 "cycle_id": rec.cycle_id,
                 "strategy": rec.strategy_type,
+                "viable": rec.verdict == "ACCEPTED",
+                "cost": cost,
+                "rejection_reason": rec.rejection_reason if rec.verdict != "ACCEPTED" else None,
+                "legs": rec.legs if rec.legs else EXAMPLE_STRATEGY_HYPOTHESIS.legs,
+                "hedge_metrics": EXAMPLE_STRATEGY_HYPOTHESIS.hedge_metrics.model_copy(
+                    update={
+                        k: v
+                        for k, v in metrics_data.items()
+                        if hasattr(EXAMPLE_STRATEGY_HYPOTHESIS.hedge_metrics, k) and v is not None
+                    }
+                ),
             }
         )
     return EXAMPLE_STRATEGY_HYPOTHESIS.model_copy(update={"cycle_id": hypothesis_id})
